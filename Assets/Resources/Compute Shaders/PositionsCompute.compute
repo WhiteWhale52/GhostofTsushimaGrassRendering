@@ -1,0 +1,44 @@
+#pragma kernel GrassPosCompute
+
+RWStructuredBuffer<float3> GrassPositions;
+float3 BoundsMin;
+float3 BoundsMax;
+int numOfGrassBlades;
+uint GlobalSeed; // new
+
+// PRNG using uint
+uint Hash(uint x)
+{
+    x ^= x >> 17;
+    x *= 0xED5AD4BB;
+    x ^= x >> 11;
+    x *= 0xAC4C1B51;
+    x ^= x >> 15;
+    x *= 0x31848BAB;
+    x ^= x >> 14;
+    return x;
+}
+
+// Float in [0, 1)
+float RandomFloat(uint seed, uint offset)
+{
+    uint hashed = Hash(seed ^ offset);
+    return (hashed & 0x00FFFFFFu) / 16777216.0f;
+}
+
+[numthreads(128, 1, 1)]
+void GrassPosCompute(uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+    if (index >= numOfGrassBlades) return;
+
+    uint seed = GlobalSeed + index;
+
+    float3 rand = float3(
+        RandomFloat(seed, 0),
+        RandomFloat(seed, 1),
+        RandomFloat(seed, 2)
+    );
+
+    GrassPositions[index] = lerp(BoundsMin, BoundsMax, rand);
+}

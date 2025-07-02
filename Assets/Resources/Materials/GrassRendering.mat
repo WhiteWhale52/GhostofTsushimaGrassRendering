@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: GrassRendering
+  m_Shader: {fileID: 4800000, guid: 4cd2c2cd11615a841a04160b41ce558d, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Bend: 5.7
+    - _BlendFactor: 0.538
+    - _Height: 1.08
+    - _Midpoint: 0.377
+    - _Tilt: 0.715
+    - _Width: 0.15
+    m_Colors:
+    - P_0: {r: 0, g: 0, b: 0, a: 0}
+    - P_1: {r: 0, g: 0, b: 0, a: 0}
+    - P_2: {r: 0, g: 0, b: 0, a: 0}
+    - _LowerColor: {r: 0.13697505, g: 0.3962264, b: 0.09158064, a: 1}
+    - _UpperColor: {r: 0.08530616, g: 0.6698113, b: 0.08530616, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
