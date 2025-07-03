@@ -29,16 +29,16 @@ Shader "Custom/GrassRendering"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma target 4.5
-            #pragma multi_compile_instancing
-            #pragma instancing_options renderinglayer
-            #pragma multi_compile DOTS_INSTANCING_ON
+             #pragma target 4.5
+             #pragma multi_compile_instancing
+             #pragma instancing_options renderinglayer
+             #pragma multi_compile DOTS_INSTANCING_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             
             struct VertInput
             {
-                float4 vertex : POSITION;
+                float4 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
                 float2 curveParams : TEXCOORD1;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -53,13 +53,9 @@ Shader "Custom/GrassRendering"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-
-            UNITY_DOTS_INSTANCING_START(UserPropertyMetadata)
-                //TODO: Declare all the per-instance properties
-            UNITY_DOTS_INSTANCING_END(UserPropertyMetadata)
+            
             
             CBUFFER_START(UnityPerMaterial)
-            ByteAddressBuffer _InstanceData;
             float4 _UpperColor;
             float4 _LowerColor;
             float _Tilt;
@@ -70,20 +66,10 @@ Shader "Custom/GrassRendering"
             float _BlendFactor;
             CBUFFER_END
 
-             float4 LoadFloat4(uint byteOffset)
-            {
-                return asfloat(_InstanceData.Load4(byteOffset));
-            }
 
-            float4x3 LoadMatrix(uint byteOffset)
-            {
-                return float4x3(
-                    LoadFloat4(byteOffset + 0),
-                    LoadFloat4(byteOffset + 16),
-                    LoadFloat4(byteOffset + 32)
-                );
-            }
-
+            UNITY_DOTS_INSTANCING_START(UserPropertyMetadata)
+                 //TODO: Declare all the per-instance properties
+             UNITY_DOTS_INSTANCING_END(UserPropertyMetadata)
             
             float3 GetBezierCurvePoint(float3 P_0, float3 P_1, float3 P_2, float t)
             {
@@ -120,25 +106,24 @@ Shader "Custom/GrassRendering"
                 return displacedPos;
             };
 
-            VertOutput vert (VertInput v, uint instanceID : SV_InstanceID)
+            VertOutput vert (VertInput v)
             {
                 VertOutput o;
                 
-                float t = v.uv.y;
-                float w = v.uv.x;
-                float A = (1-t) * (w-0.5f);
-                float B = (0.15f + t) * A;
-                float C = _Width * B;
-                float D = (50 - 100 * w) + C;
-                float side = v.curveParams.x;   
+                float t = v.curveParams.y;
+                float w = v.curveParams.x;
+                // float A = (1-t) * (w-0.5f);
+                // float B = (0.15f + t) * A;
+                // float C = _Width * B;
+                // float D = (50 - 100 * w) + C;
+                // float side = v.curveParams.x;   
 
                 float3 P_0 = float3(0,0,0);
                 float3 P_2 =  float3(_Height * cos(_Tilt),_Height * sin(_Tilt), 0);
 
                 float3 MidPoint = (P_2 - P_0) * _Midpoint;
                 float3 P_1 = float3(max(MidPoint.x - sin(_Tilt) * 0.5f * _Bend ,0), MidPoint.y + cos(_Tilt), 0);
-
-
+                
                 float3 curvedPos = GetBezierCurvePoint(P_0, P_1, P_2, t);
 
                 // TODO: Lerp between 15 verts to 7 vert look, the # of vertices is the same just verts move based on
@@ -148,10 +133,10 @@ Shader "Custom/GrassRendering"
                 // if (0.3 < t < 0.6) t = lerp(t, 0.6667, _BlendFactor)
                 // if (0.6 < t  ) t = lerp(t, 1, _BlendFactor)
                 
-             //   float3 finalDisplacedPos = DisplaceVertByBezierCurve(curvedPos, side, _Width, t );
-                float3 finalDisplacedPos = DisplaceVertByBezierCurve1(curvedPos, w ,t);
-                finalDisplacedPos = DisplaceVertByWindTexture(finalDisplacedPos);
-                finalDisplacedPos = DisplaceVertByInteraction(finalDisplacedPos);
+                float3 finalDisplacedPos = DisplaceVertByBezierCurve(curvedPos, w, _Width, t );
+               // float3 finalDisplacedPos = DisplaceVertByBezierCurve(curvedPos, side, 3 ,t);
+               // finalDisplacedPos = DisplaceVertByWindTexture(finalDisplacedPos);
+                //finalDisplacedPos = DisplaceVertByInteraction(finalDisplacedPos);
                 
                 //TODO: Compute ortho-normal direction by getting the per-blade facing direction
                 // flipping the x and z axis and negating one
@@ -164,10 +149,13 @@ Shader "Custom/GrassRendering"
                 // the phase offset is affected by the per-blade hash
                 
                 // TODO: Tilt the vertices normal to give the blades a more rounded natural look
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_TRANSFER_INSTANCE_ID(v, o);
 
-                uint byteOffset = instanceID * 128;
+                const VertexPositionInputs positionInputs = GetVertexPositionInputs(finalDisplacedPos);
                 
-                o.vertex = TransformObjectToHClip(finalDisplacedPos);
+                
+                o.vertex = positionInputs.positionCS;
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 
                 return o;

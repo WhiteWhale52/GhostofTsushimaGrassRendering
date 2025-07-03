@@ -43,21 +43,22 @@ namespace GhostOfTsushima.Runtime
         private BatchMeshID m_MeshID;
         private BatchMaterialID m_MaterialID;
         
-        private ComputeBuffer m_ComputeBuffer;
-        [SerializeField] private ComputeShader m_ComputeShader;
+        // private ComputeBuffer m_ComputeBuffer;
+        // [SerializeField] private ComputeShader m_ComputeShader;
         
 
         private int kSizeOfFloat4 = sizeof(float) * 4;
         private const int kSizeOfMatrix = sizeof(float) * 4 * 4;
         private const int kSizeOfPackedMatrix = sizeof(float) * 4 * 3;
-        private const int kBytesPerInstance = (kSizeOfMatrix * 2);
+        private const int kBytesPerInstance = (kSizeOfPackedMatrix * 2);
 
         public Vector3[] positions;
 
         private void OnEnable()
         {
             // Creating the High LOD Grass Blade in CPU
-            //m_GrassMesh = CreateHighLODGrassBladesMesh();
+            m_GrassMesh = CreateHighLODGrassBladesMesh();
+           // m_GrassMaterial.EnableKeyword("DOTS_INSTANCING_ON");
             // Initialized the BRG
             m_BRG = new BatchRendererGroup(this.OnPerformCulling, IntPtr.Zero);
             // Initialized and Registered the mesh and material to BRG instance
@@ -65,18 +66,17 @@ namespace GhostOfTsushima.Runtime
             if (m_GrassMaterial) m_MaterialID = m_BRG.RegisterMaterial(m_GrassMaterial);
             
             
-            m_ComputeShader = Resources.Load<ComputeShader>("Compute Shaders/PositionsCompute");
-            m_ComputeBuffer = new ComputeBuffer(smallNumberOfGrassBlades, 3 * sizeof(float));
+          //  m_ComputeShader = Resources.Load<ComputeShader>("Compute Shaders/PositionsCompute");
+        //    m_ComputeBuffer = new ComputeBuffer(smallNumberOfGrassBlades, 3 * sizeof(float));
                 
-            m_InstanceData = new GraphicsBuffer(GraphicsBuffer.Target.Raw, BufferCountForInstances(kBytesPerInstance,
-                smallNumberOfGrassBlades, 2 * kSizeOfMatrix), sizeof(int));
+           m_InstanceData = new GraphicsBuffer(GraphicsBuffer.Target.Raw, BufferCountForInstances(kBytesPerInstance,
+               numOfGrassBlades, 2 * kSizeOfMatrix), sizeof(int));
 
             //TODO: Create a Compute Shader 
             // The compute shader will create numOfGrassBlades instances of GrassBladeData
             // And for each will populate the instances with their data
             // The compute shader should also use a Displacement buffer and wind texture to 
-
-            // Like this:
+            /// Like this:
             // Declare the fields
             // private ComputeBuffer m_InstanceBuffer;
             // private ComputeShader m_InstanceDataCompute;
@@ -118,7 +118,7 @@ namespace GhostOfTsushima.Runtime
         private void OnDisable()
         {
             m_BRG.Dispose();
-            m_ComputeBuffer.Release();
+//            m_ComputeBuffer.Release();
             m_InstanceData.Release();
         }
 
@@ -152,7 +152,7 @@ namespace GhostOfTsushima.Runtime
                 {
                     vertices.Add(new Vector3(0, t, 0));
                     uv0.Add(new Vector2(0.5f, 1));
-                    curveParams.Add(new Vector2(0, t));
+                    curveParams.Add(new Vector2(0, 1));
                     continue;
                 }
 
@@ -214,6 +214,7 @@ namespace GhostOfTsushima.Runtime
         
         //TODO: Make a low LOD grass blade mesh
         
+        
         // private void AllocateInstanceDataBuffer()
         // {
         //     m_InstanceData = new GraphicsBuffer(GraphicsBuffer.Target.Raw,
@@ -224,45 +225,32 @@ namespace GhostOfTsushima.Runtime
         
         private void PopulateInstanceDataBuffer()
         {
-            int kernel = m_ComputeShader.FindKernel("GrassPosCompute");
-            int threadCountX = Mathf.CeilToInt(128 / 30);
+            /*int kernel = m_ComputeShader.FindKernel("GrassPosCompute");
+            int threadCountX = Mathf.CeilToInt(6);
             int threadCountY = Mathf.CeilToInt(1);
             int threadCountZ = Mathf.CeilToInt(1);
             m_ComputeShader.SetVector(Min, BoundsMin);
             m_ComputeShader.SetVector(Max, BoundsMax);
-            m_ComputeShader.SetInt(NumOfGrassBlades, smallNumberOfGrassBlades);
+          //  m_ComputeShader.SetInt(NumOfGrassBlades, smallNumberOfGrassBlades);
             m_ComputeShader.SetInt(GlobalSeed, Random.Range(0,100000));
             m_ComputeShader.SetBuffer(kernel, GrassPositions, m_ComputeBuffer);
             m_ComputeShader.Dispatch(kernel, threadCountX, threadCountY, threadCountZ);
-            positions = new Vector3[smallNumberOfGrassBlades];
-            m_ComputeBuffer.GetData(positions); 
+            positions = new Vector3[numOfGrassBlades];
+            m_ComputeBuffer.GetData(positions); */
             
             var zero = new Matrix4x4[1] { Matrix4x4.zero };
-            var matrices = new Matrix4x4[smallNumberOfGrassBlades];
-            var objectToWorld = new Matrix4x4[smallNumberOfGrassBlades];
-            var worldToObject = new Matrix4x4[smallNumberOfGrassBlades];
+            var matrices = new Matrix4x4[numOfGrassBlades];
+            var objectToWorld = new PackedMatrix[numOfGrassBlades];
+            var worldToObject = new PackedMatrix[numOfGrassBlades];
             
 
-                
-            for (int i = 0; i < smallNumberOfGrassBlades; i++)
+            for (int i = 0; i < numOfGrassBlades; i++)
             {
-                Vector3 pos = new Vector3(1, 0, i);
-                matrices[i] = Matrix4x4.Translate(pos);
-               // positions[i] = pos; // <- Make sure positions matches what's in the matrix
-                Debug.Log(positions[i]);
-            }
-
-            for (int i = 0; i < smallNumberOfGrassBlades; i++)
-            {
-                //objectToWorld[i] = new PackedMatrix(matrices[i]);
-                objectToWorld[i] = matrices[i];
-            }
-
-            // Also create packed inverse matrices.
-            for (int i = 0; i < smallNumberOfGrassBlades; i++)
-            {
-                //worldToObject[i] = new PackedMatrix(matrices[i].inverse);
-                worldToObject[i] = matrices[i].inverse;
+                matrices[i] = Matrix4x4.Translate(new Vector3(1, 0, i * 4));
+                objectToWorld[i] = new PackedMatrix(matrices[i]);
+                worldToObject[i] = new PackedMatrix(matrices[i].inverse);
+                //objectToWorld[i] = matrices[i];
+               // Debug.Log("Object to World matrix of item_"+ i + ": " + objectToWorld[i]);
             }
             
 
@@ -276,14 +264,14 @@ namespace GhostOfTsushima.Runtime
             // Calculates start addresses for the different instanced properties. unity_ObjectToWorld starts
             // at address 96 instead of 64, because the computeBufferStartIndex parameter of SetData
             // is expressed as source array elements, so it is easier to work in multiples of sizeof(PackedMatrix).
-           uint byteAddressObjectToWorld = kSizeOfMatrix * 2;
-           uint byteAddressWorldToObject = byteAddressObjectToWorld + kSizeOfMatrix * (uint) smallNumberOfGrassBlades;
+            uint byteAddressObjectToWorld = kSizeOfPackedMatrix * 2;
+            uint byteAddressWorldToObject = byteAddressObjectToWorld + kSizeOfPackedMatrix * (uint) numOfGrassBlades;
        //    uint byteAddressColor = byteAddressWorldToObject + kSizeOfPackedMatrix * (uint) smallNumberOfGrassBlades;
 
             // Upload the instance data to the GraphicsBuffer so the shader can load them.
             m_InstanceData.SetData(zero, 0, 0, 1);
-            m_InstanceData.SetData(objectToWorld, 0, (int)(byteAddressObjectToWorld / kSizeOfMatrix), objectToWorld.Length);
-            m_InstanceData.SetData(worldToObject, 0, (int)(byteAddressWorldToObject / kSizeOfMatrix), worldToObject.Length);
+            m_InstanceData.SetData(objectToWorld, 0, (int)(byteAddressObjectToWorld / kSizeOfPackedMatrix), objectToWorld.Length);
+            m_InstanceData.SetData(worldToObject, 0, (int)(byteAddressWorldToObject / kSizeOfPackedMatrix), worldToObject.Length);
 
             // Set up metadata values to point to the instance data. Set the most significant bit 0x80000000 in each
             // which instructs the shader that the data is an array with one value per instance, indexed by the instance index.
@@ -299,74 +287,74 @@ namespace GhostOfTsushima.Runtime
             // Finally, create a batch for the instances and make the batch use the GraphicsBuffer with the
             // instance data as well as the metadata values that specify where the properties are.
             m_BatchID = m_BRG.AddBatch(metadata, m_InstanceData.bufferHandle);
-            m_GrassMaterial.SetBuffer(InstanceData, m_InstanceData);
+         //   m_GrassMaterial.SetBuffer(InstanceData, m_InstanceData);
         }
         
         private unsafe JobHandle OnPerformCulling(BatchRendererGroup rendererGroup, BatchCullingContext cullingContext, BatchCullingOutput cullingOutput, IntPtr userContext)
         {
-               // UnsafeUtility.Malloc() requires an alignment, so use the largest integer type's alignment
-            // which is a reasonable default.
-            int alignment = UnsafeUtility.AlignOf<long>();
+                // UnsafeUtility.Malloc() requires an alignment, so use the largest integer type's alignment
+             // which is a reasonable default.
+             int alignment = UnsafeUtility.AlignOf<long>();
 
-            // Acquire a pointer to the BatchCullingOutputDrawCommands struct so you can easily
-            // modify it directly.
-            var drawCommands = (BatchCullingOutputDrawCommands*)cullingOutput.drawCommands.GetUnsafePtr();
+             // Acquire a pointer to the BatchCullingOutputDrawCommands struct so you can easily
+             // modify it directly.
+             var drawCommands = (BatchCullingOutputDrawCommands*)cullingOutput.drawCommands.GetUnsafePtr();
 
-            // Allocate memory for the output arrays. In a more complicated implementation, you would calculate
-            // the amount of memory to allocate dynamically based on what is visible.
-            // This example assumes that all of the instances are visible and thus allocates
-            // memory for each of them. The necessary allocations are as follows:
-            // - a single draw command (which draws kNumInstances instances)
-            // - a single draw range (which covers our single draw command)
-            // - kNumInstances visible instance indices.
-            // You must always allocate the arrays using Allocator.TempJob.
-            drawCommands->drawCommands = (BatchDrawCommand*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawCommand>(), alignment, Allocator.TempJob);
-            drawCommands->drawRanges = (BatchDrawRange*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawRange>(), alignment, Allocator.TempJob);
-            drawCommands->visibleInstances = (int*)UnsafeUtility.Malloc(smallNumberOfGrassBlades * sizeof(int), alignment, Allocator.TempJob);
-            drawCommands->drawCommandPickingInstanceIDs = null;
+             // Allocate memory for the output arrays. In a more complicated implementation, you would calculate
+             // the amount of memory to allocate dynamically based on what is visible.
+             // This example assumes that all of the instances are visible and thus allocates
+             // memory for each of them. The necessary allocations are as follows:
+             // - a single draw command (which draws kNumInstances instances)
+             // - a single draw range (which covers our single draw command)
+             // - kNumInstances visible instance indices.
+             // You must always allocate the arrays using Allocator.TempJob.
+             drawCommands->drawCommands = (BatchDrawCommand*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawCommand>(), alignment, Allocator.TempJob);
+             drawCommands->drawRanges = (BatchDrawRange*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawRange>(), alignment, Allocator.TempJob);
+             drawCommands->visibleInstances = (int*)UnsafeUtility.Malloc(numOfGrassBlades * sizeof(int), alignment, Allocator.TempJob);
+             drawCommands->drawCommandPickingInstanceIDs = null;
 
-            drawCommands->drawCommandCount = 1;
-            drawCommands->drawRangeCount = 1;
-            drawCommands->visibleInstanceCount = (int)smallNumberOfGrassBlades;
+             drawCommands->drawCommandCount = 1;
+             drawCommands->drawRangeCount = 1;
+             drawCommands->visibleInstanceCount = (int)numOfGrassBlades;
 
-            // This example doens't use depth sorting, so it leaves instanceSortingPositions as null.
-            drawCommands->instanceSortingPositions = null;
-            drawCommands->instanceSortingPositionFloatCount = 0;
+             // This example doens't use depth sorting, so it leaves instanceSortingPositions as null.
+             drawCommands->instanceSortingPositions = null;
+             drawCommands->instanceSortingPositionFloatCount = 0;
 
-            // Configure the single draw command to draw kNumInstances instances
-            // starting from offset 0 in the array, using the batch, material and mesh
-            // IDs registered in the Start() method. It doesn't set any special flags.
-            drawCommands->drawCommands[0].visibleOffset = 0;
-            drawCommands->drawCommands[0].visibleCount = (uint) smallNumberOfGrassBlades;
-            drawCommands->drawCommands[0].batchID = m_BatchID;
-            drawCommands->drawCommands[0].materialID = m_MaterialID;
-            drawCommands->drawCommands[0].meshID = m_MeshID;
-            drawCommands->drawCommands[0].submeshIndex = 0;
-            drawCommands->drawCommands[0].splitVisibilityMask = 0xff;
-            drawCommands->drawCommands[0].flags = 0;
-            drawCommands->drawCommands[0].sortingPosition = 0;
+             // Configure the single draw command to draw kNumInstances instances
+             // starting from offset 0 in the array, using the batch, material and mesh
+             // IDs registered in the Start() method. It doesn't set any special flags.
+             drawCommands->drawCommands[0].visibleOffset = 0;
+             drawCommands->drawCommands[0].visibleCount = (uint) numOfGrassBlades;
+             drawCommands->drawCommands[0].batchID = m_BatchID;
+             drawCommands->drawCommands[0].materialID = m_MaterialID;
+             drawCommands->drawCommands[0].meshID = m_MeshID;
+             drawCommands->drawCommands[0].submeshIndex = 0;
+             drawCommands->drawCommands[0].splitVisibilityMask = 0xff;
+             drawCommands->drawCommands[0].flags = 0;
+             drawCommands->drawCommands[0].sortingPosition = 0;
 
-            // Configure the single draw range to cover the single draw command which
-            // is at offset 0.
-            drawCommands->drawRanges[0].drawCommandsType = BatchDrawCommandType.Direct;
-            drawCommands->drawRanges[0].drawCommandsBegin = 0;
-            drawCommands->drawRanges[0].drawCommandsCount = 1;
+             // Configure the single draw range to cover the single draw command which
+             // is at offset 0.
+             drawCommands->drawRanges[0].drawCommandsType = BatchDrawCommandType.Direct;
+             drawCommands->drawRanges[0].drawCommandsBegin = 0;
+             drawCommands->drawRanges[0].drawCommandsCount = 1;
 
-            // This example doesn't care about shadows or motion vectors, so it leaves everything
-            // at the default zero values, except the renderingLayerMask which it sets to all ones
-            // so Unity renders the instances regardless of mask settings.
-            drawCommands->drawRanges[0].filterSettings = new BatchFilterSettings { renderingLayerMask = 0xffffffff, };
+             // This example doesn't care about shadows or motion vectors, so it leaves everything
+             // at the default zero values, except the renderingLayerMask which it sets to all ones
+             // so Unity renders the instances regardless of mask settings.
+             drawCommands->drawRanges[0].filterSettings = new BatchFilterSettings { renderingLayerMask = 0xffffffff, };
 
-            // Finally, write the actual visible instance indices to the array. In a more complicated
-            // implementation, this output would depend on what is visible, but this example
-            // assumes that everything is visible.
-            for (int i = 0; i < smallNumberOfGrassBlades; ++i)
-                drawCommands->visibleInstances[i] = i;
+             // Finally, write the actual visible instance indices to the array. In a more complicated
+             // implementation, this output would depend on what is visible, but this example
+             // assumes that everything is visible.
+             for (int i = 0; i < numOfGrassBlades; ++i)
+                 drawCommands->visibleInstances[i] = i;
 
-            // This simple example doesn't use jobs, so it returns an empty JobHandle.
-            // Performance-sensitive applications are encouraged to use Burst jobs to implement
-            // culling and draw command output. In this case, this function returns a
-            // handle here that completes when the Burst jobs finish.
+             // This simple example doesn't use jobs, so it returns an empty JobHandle.
+             // Performance-sensitive applications are encouraged to use Burst jobs to implement
+             // culling and draw command output. In this case, this function returns a
+             // handle here that completes when the Burst jobs finish.
             return new JobHandle();
         }
         

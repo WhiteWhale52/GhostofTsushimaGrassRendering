@@ -606,8 +606,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9aaf635f76444077b42f10ff943c3cb9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_GrassMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
-  m_GrassMaterial: {fileID: 2100000, guid: 9b4e03aecab5a7547a01a67b44eb716a, type: 2}
+  m_GrassMesh: {fileID: 0}
+  m_GrassMaterial: {fileID: 2100000, guid: 366c9cda78f37c24b831e0045e466ada, type: 2}
   numOfGrassBlades: 12
   smallNumberOfGrassBlades: 30
   BoundsMin: {x: 0, y: 0, z: 0}
@@ -623,7 +623,7 @@ Transform:
   m_GameObject: {fileID: 1408049222}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.2037425, y: 1.4743763, z: 5.171909}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
