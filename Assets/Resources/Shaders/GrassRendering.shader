@@ -10,7 +10,7 @@ Shader "Custom/GrassRendering"
         _Tilt ("Tilt", Range(0, 1.57)) = 0.2
         _Bend ("Bend", Range(0, 8)) = 2
         _Midpoint ("Midpoint", Range(0, 1)) = 0.5
-        _Width("Width", Float) = 2
+        _Width("Width", Float) = .02
         _BlendFactor ("Blend Factor", Range(0,1)) = .4
         //TODO: Use a diffuse texture instead of colors
         //TODO: Use a RenderTexture to make player interaction
@@ -41,13 +41,15 @@ Shader "Custom/GrassRendering"
                 float4 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
                 float2 curveParams : TEXCOORD1;
+                float3 normalOS : NORMAL;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct VertOutput
             {
                 float2 uv : TEXCOORD0;
-                float4 vertex : SV_POSITION;
+                float4 positionCS : SV_POSITION;
+                float3 normalWS : TEXCOORD1;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -79,7 +81,7 @@ Shader "Custom/GrassRendering"
             float3 DisplaceVertByBezierCurve(float3 originalPos, float side, float width, float t)
             {
                  float3 displacedPos = originalPos;
-                displacedPos.z += (1-t) * _Width * side;
+                displacedPos.z += (1-t) * width * side;
                 return displacedPos;
             }
 
@@ -110,8 +112,8 @@ Shader "Custom/GrassRendering"
             {
                 VertOutput o;
                 
-                float t = v.curveParams.y;
-                float w = v.curveParams.x;
+                float t = v.uv.y;
+                float w = v.uv.x;
                 // float A = (1-t) * (w-0.5f);
                 // float B = (0.15f + t) * A;
                 // float C = _Width * B;
@@ -152,10 +154,13 @@ Shader "Custom/GrassRendering"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_TRANSFER_INSTANCE_ID(v, o);
 
+                
+
                 const VertexPositionInputs positionInputs = GetVertexPositionInputs(finalDisplacedPos);
+                const VertexNormalInputs normalInputs = GetVertexNormalInputs(finalDisplacedPos);
+                o.normalWS = normalInputs.normalWS;
                 
-                
-                o.vertex = positionInputs.positionCS;
+                o.positionCS = positionInputs.positionCS;
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 
                 return o;
@@ -164,6 +169,9 @@ Shader "Custom/GrassRendering"
             float4 frag (VertOutput i) : SV_Target
             {
                 float4 col = tex2D(_MainTex, i.uv);
+                float3 lightDir = normalize(_MainLightPosition.xyz);
+                float NdotL = saturate(dot(i.normalWS, lightDir));
+                float3 baseColor = lerp( _LowerColor,_UpperColor, i.uv.y).rgb * NdotL * _MainLightColor.rgb;
                 // TODO: Add the diffuse colors
                 // Two textures are combined:
                 // A 1D texture (like gloss) for blade-width variation (e.g., a central vein).
@@ -174,7 +182,7 @@ Shader "Custom/GrassRendering"
                 
                 // TODO: Translucency: Simulates light scattering through grass.
                 // Higher at the thick base, fading toward the tip.
-                return lerp( _LowerColor,_UpperColor, i.uv.y);
+                return float4(baseColor, 1);
             }
             ENDHLSL
         }
