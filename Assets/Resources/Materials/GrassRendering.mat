@@ -40,15 +40,15 @@ Material:
     m_Floats:
     - _Bend: 5.7
     - _BlendFactor: 0.538
-    - _Height: 1.08
+    - _Height: 3.99
     - _Midpoint: 0.377
     - _Tilt: 0.715
-    - _Width: 0.15
+    - _Width: 0.03
     m_Colors:
     - P_0: {r: 0, g: 0, b: 0, a: 0}
     - P_1: {r: 0, g: 0, b: 0, a: 0}
     - P_2: {r: 0, g: 0, b: 0, a: 0}
     - _LowerColor: {r: 0.13697505, g: 0.3962264, b: 0.09158064, a: 1}
-    - _UpperColor: {r: 0.08530616, g: 0.6698113, b: 0.08530616, a: 1}
+    - _UpperColor: {r: 0.6292967, g: 0.67058825, b: 0.086274505, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

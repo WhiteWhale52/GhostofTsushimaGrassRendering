@@ -4,6 +4,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Random = UnityEngine.Random;
@@ -52,8 +53,10 @@ namespace GhostOfTsushima.Runtime
         private const int kSizeOfPackedMatrix = sizeof(float) * 4 * 3;
         private const int kBytesPerInstance = (kSizeOfPackedMatrix * 2);
 
-        public Vector3[] positions;
 
+        public int jobBatchSize;
+
+        
         private void OnEnable()
         {
             // Creating the High LOD Grass Blade in CPU
@@ -222,7 +225,7 @@ namespace GhostOfTsushima.Runtime
         //         sizeof(int));
         // }
         
-        
+        [BurstCompile]
         private void PopulateInstanceDataBuffer()
         {
             /*int kernel = m_ComputeShader.FindKernel("GrassPosCompute");
@@ -238,21 +241,35 @@ namespace GhostOfTsushima.Runtime
             positions = new Vector3[numOfGrassBlades];
             m_ComputeBuffer.GetData(positions); */
             
-            var zero = new Matrix4x4[1] { Matrix4x4.zero };
-            var matrices = new Matrix4x4[numOfGrassBlades];
-            var objectToWorld = new PackedMatrix[numOfGrassBlades];
-            var worldToObject = new PackedMatrix[numOfGrassBlades];
+            var zero = new float4x4[1] { float4x4.zero };
+            var matrices = new NativeArray<float4x4>(numOfGrassBlades, Allocator.TempJob);
+            var objectToWorld = new NativeArray<PackedMatrix>(numOfGrassBlades, Allocator.TempJob);
+            var worldToObject = new NativeArray<PackedMatrix>(numOfGrassBlades, Allocator.TempJob);
             
 
-            for (int i = 0; i < numOfGrassBlades; i++)
-            {
-                matrices[i] = Matrix4x4.Translate(new Vector3(1, 0, i * 4));
-                objectToWorld[i] = new PackedMatrix(matrices[i]);
-                worldToObject[i] = new PackedMatrix(matrices[i].inverse);
-                //objectToWorld[i] = matrices[i];
-               // Debug.Log("Object to World matrix of item_"+ i + ": " + objectToWorld[i]);
-            }
+            // for (int i = 0; i < numOfGrassBlades; i++)
+            // {
+            //     matrices[i] = Matrix4x4.Translate(new Vector3(Random.Range(BoundsMin.x, BoundsMax.x), 
+            //         Random.Range(BoundsMin.y, BoundsMax.y), Random.Range(BoundsMin.z, BoundsMax.z)));
+            //     objectToWorld[i] = new PackedMatrix(matrices[i]);
+            //     worldToObject[i] = new PackedMatrix(matrices[i].inverse);
+            //     //objectToWorld[i] = matrices[i];
+            //    // Debug.Log("Object to World matrix of item_"+ i + ": " + objectToWorld[i]);
+            // }
             
+            PopulateMatricesJob job = new PopulateMatricesJob
+            {
+                    defaultMatrices = matrices,
+                    ObjectToWorld = objectToWorld,
+                    WorldToObject = worldToObject,
+                    BoundsMin = BoundsMin,
+                    BoundsMax = BoundsMax,
+                    rand = new Unity.Mathematics.Random((uint)Time.realtimeSinceStartup * 43)
+            };
+            JobHandle handle = job.Schedule(numOfGrassBlades, jobBatchSize);
+            handle.Complete();
+            
+          
 
             // In this simple example, the instance data is placed into the buffer like this:
             // Offset | Description
@@ -287,9 +304,14 @@ namespace GhostOfTsushima.Runtime
             // Finally, create a batch for the instances and make the batch use the GraphicsBuffer with the
             // instance data as well as the metadata values that specify where the properties are.
             m_BatchID = m_BRG.AddBatch(metadata, m_InstanceData.bufferHandle);
+            matrices.Dispose();
+            objectToWorld.Dispose();
+            worldToObject.Dispose();
          //   m_GrassMaterial.SetBuffer(InstanceData, m_InstanceData);
         }
-        
+
+
+        [BurstCompile]
         private unsafe JobHandle OnPerformCulling(BatchRendererGroup rendererGroup, BatchCullingContext cullingContext, BatchCullingOutput cullingOutput, IntPtr userContext)
         {
                 // UnsafeUtility.Malloc() requires an alignment, so use the largest integer type's alignment
@@ -376,6 +398,25 @@ namespace GhostOfTsushima.Runtime
                 UnsafeUtility.SizeOf<T>() * count,
                 UnsafeUtility.AlignOf<T>(),
                 Allocator.TempJob);
+        }
+
+        [BurstCompile]
+        private struct PopulateMatricesJob : IJobParallelFor
+        {
+            public NativeArray<float4x4> defaultMatrices;
+            public NativeArray<PackedMatrix> ObjectToWorld;
+            public NativeArray<PackedMatrix> WorldToObject;
+            public float3 BoundsMin;
+            public float3 BoundsMax;
+            public Unity.Mathematics.Random rand;
+            
+            public void Execute(int index)
+            {
+                float3 transformation = new float3(rand.NextFloat3(BoundsMin, BoundsMax));
+                defaultMatrices[index] = float4x4.TRS(transformation, Quaternion.identity, Vector3.one);
+                ObjectToWorld[index] = new PackedMatrix(defaultMatrices[index]);
+                WorldToObject[index] = new PackedMatrix(math.inverse(defaultMatrices[index]));
+            }
         }
 
   
