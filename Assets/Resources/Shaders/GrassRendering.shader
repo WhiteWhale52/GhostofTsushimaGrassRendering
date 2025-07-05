@@ -4,14 +4,16 @@ Shader "Custom/GrassRendering"
     {
         _DiffuseTex ("DiffuseTexture", 2D) = "white" {}
         _InteractionTex("Render Texture", 2D) = "black" {}
+        _GrassColorTexture ("Grass Color Texture", 2D) = "white" {}
         _UpperColor("Upper Color", Color) =  (0,1,0,1)
         _LowerColor ("Lower Color", Color) = (.9,1,.2,1)
         _Height ("Height" , Float) = 2
-        _Tilt ("Tilt", Range(0, 1.57)) = 0.2
-        _Bend ("Bend", Range(0, 8)) = 2
-        _Midpoint ("Midpoint", Range(0, 1)) = 0.5
+        _Tilt ("Tilt", Float) = 0.2
+        _Bend ("Bend", Float) = 2
+        _Midpoint ("Midpoint", Range(0,1)) = 0.5
         _Width("Width", Float) = .02
-        _BlendFactor ("Blend Factor", Range(0,1)) = .4
+        _ViewThickening ("View-dependent thickening", Float) = 0.4
+        _FacingDirection ("Facing Direction", Vector) = (1,1,0,0)
         //TODO: Use a diffuse texture instead of colors
         //TODO: Use a RenderTexture to make player interaction
     }
@@ -40,7 +42,6 @@ Shader "Custom/GrassRendering"
             {
                 float4 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
-                float2 curveParams : TEXCOORD1;
                 float3 normalOS : NORMAL;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
@@ -52,9 +53,7 @@ Shader "Custom/GrassRendering"
                 float3 normalWS : TEXCOORD1;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
-
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
+            
             
             
             CBUFFER_START(UnityPerMaterial)
@@ -66,12 +65,17 @@ Shader "Custom/GrassRendering"
             float _Height;
             float _Width;
             float _BlendFactor;
+            float _ViewThickening;
+            float2 _FacingDirection;
             CBUFFER_END
 
 
             UNITY_DOTS_INSTANCING_START(UserPropertyMetadata)
                  //TODO: Declare all the per-instance properties
              UNITY_DOTS_INSTANCING_END(UserPropertyMetadata)
+
+            TEXTURE2D(_GrassColorTexture);
+            SAMPLER(sampler_GrassColorTexture);
             
             float3 GetBezierCurvePoint(float3 P_0, float3 P_1, float3 P_2, float t)
             {
@@ -91,7 +95,7 @@ Shader "Custom/GrassRendering"
                  float A = (1-t) * (w-0.5f);
                 float B = (0.15f + t) * A;
                 float C = _Width * B;
-                float D = (50 - 100 * w) + C;
+                float D = (.5f - 1 * w) + C;
                 displacedPos.z += D;
                 return displacedPos;
             }
@@ -111,31 +115,35 @@ Shader "Custom/GrassRendering"
             VertOutput vert (VertInput v)
             {
                 VertOutput o;
-                
-                float t = v.uv.y;
+                float positionAlongBlade = v.uv.y;
                 float w = v.uv.x;
-                // float A = (1-t) * (w-0.5f);
-                // float B = (0.15f + t) * A;
-                // float C = _Width * B;
-                // float D = (50 - 100 * w) + C;
-                // float side = v.curveParams.x;   
+
+                
 
                 float3 P_0 = float3(0,0,0);
                 float3 P_2 =  float3(_Height * cos(_Tilt),_Height * sin(_Tilt), 0);
-
                 float3 MidPoint = (P_2 - P_0) * _Midpoint;
                 float3 P_1 = float3(max(MidPoint.x - sin(_Tilt) * 0.5f * _Bend ,0), MidPoint.y + cos(_Tilt), 0);
+                float3 curvedPos = GetBezierCurvePoint(P_0, P_1, P_2, positionAlongBlade);
                 
-                float3 curvedPos = GetBezierCurvePoint(P_0, P_1, P_2, t);
-
+                float2 facingDir = normalize(_FacingDirection); // make sure it's normalized
+                float3 rotatedPos;
+                rotatedPos.x = curvedPos.x * facingDir.x;
+                rotatedPos.y = curvedPos.y;
+                rotatedPos.z = curvedPos.x * facingDir.y;
+                
+                float2 orthogonalNormal = float2(-facingDir.y, facingDir.x);
+                
+               // float3 vertPos = float3(normalize(_FacingDirection.x) + curvedPos.x, curvedPos.y, normalize(_FacingDirection.y) + curvedPos.z);
                 // TODO: Lerp between 15 verts to 7 vert look, the # of vertices is the same just verts move based on
                 // distance
                 // Previous attempt:
                 // if (0 < t < 0.3) t = lerp(t, 0.3333, _BlendFactor)
                 // if (0.3 < t < 0.6) t = lerp(t, 0.6667, _BlendFactor)
                 // if (0.6 < t  ) t = lerp(t, 1, _BlendFactor)
-                
-                float3 finalDisplacedPos = DisplaceVertByBezierCurve(curvedPos, w, _Width, t );
+                float2 stepDirection = (1-positionAlongBlade) * _Width * normalize(orthogonalNormal) * w;
+                rotatedPos += float3(stepDirection.x,0,stepDirection.y); 
+             //   float3 finalDisplacedPos = DisplaceVertByBezierCurve(curvedPos, w, _Width, t );
                // float3 finalDisplacedPos = DisplaceVertByBezierCurve(curvedPos, side, 3 ,t);
                // finalDisplacedPos = DisplaceVertByWindTexture(finalDisplacedPos);
                 //finalDisplacedPos = DisplaceVertByInteraction(finalDisplacedPos);
@@ -156,22 +164,38 @@ Shader "Custom/GrassRendering"
 
                 
 
-                const VertexPositionInputs positionInputs = GetVertexPositionInputs(finalDisplacedPos);
-                const VertexNormalInputs normalInputs = GetVertexNormalInputs(finalDisplacedPos);
-                o.normalWS = normalInputs.normalWS;
+                const VertexPositionInputs positionInputs = GetVertexPositionInputs(rotatedPos);
                 
+                float newUVsY = v.uv.y - 0.5f;
+                 float3 TransformedCameraDir = _WorldSpaceCameraPos - positionInputs.positionCS;
+                 float A = pow(abs(TransformedCameraDir.z), 1.2f);
+                 float B = saturate(A);
+                 float C = dot(TransformedCameraDir.z, newUVsY);
+                 float D = B * C  - 0.5f;
+                 float E = D * _ViewThickening;
+                 float Mask = saturate(pow((1-positionAlongBlade), -0.08f) * pow((positionAlongBlade + 0.5f),0.33f));
+                 float H = E * Mask;
+                //float3 normalDir = normal * float3(1,1,0);
+              //  float3 Tilt = normalDir * H;
+                
+               // o.normalWS = cross(vertPos, float3(orthogonalNormal.x, 0, orthogonalNormal.y)) ;
+                o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.positionCS = positionInputs.positionCS;
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                o.uv = v.uv;
                 
                 return o;
             }
 
             float4 frag (VertOutput i) : SV_Target
             {
-                float4 col = tex2D(_MainTex, i.uv);
-                float3 lightDir = normalize(_MainLightPosition.xyz);
-                float NdotL = saturate(dot(i.normalWS, lightDir));
-                float3 baseColor = lerp( _LowerColor,_UpperColor, i.uv.y).rgb * NdotL * _MainLightColor.rgb;
+             //   return float4(i.normalWS,1);
+                
+               // float4 col = half4(SAMPLE_TEXTURE2D(_GrassColorTexture,sampler_GrassColorTexture, i.uv));
+                //float3 lightDir = normalize(_MainLightPosition.xyz);
+                //float NdotL = saturate(dot(i.normalWS, lightDir));
+                //float3 baseColor = lerp( _LowerColor,_UpperColor, i.uv.y).rgb * NdotL * _MainLightColor.rgb;
+                float4 lerpedColor = lerp(_LowerColor, _UpperColor, i.uv.y);
+                float4 baseColor = lerpedColor ;
                 // TODO: Add the diffuse colors
                 // Two textures are combined:
                 // A 1D texture (like gloss) for blade-width variation (e.g., a central vein).
@@ -182,7 +206,7 @@ Shader "Custom/GrassRendering"
                 
                 // TODO: Translucency: Simulates light scattering through grass.
                 // Higher at the thick base, fading toward the tip.
-                return float4(baseColor, 1);
+                return baseColor;
             }
             ENDHLSL
         }

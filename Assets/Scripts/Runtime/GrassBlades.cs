@@ -2,12 +2,12 @@
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using Unity.Burst;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
-using Random = UnityEngine.Random;
 
 // Removed unused 'using' statements for clarity
 namespace GhostOfTsushima.Runtime
@@ -25,6 +25,7 @@ namespace GhostOfTsushima.Runtime
         private static readonly int InstanceData = Shader.PropertyToID("_InstanceData");
         private static readonly int NumOfGrassBlades = Shader.PropertyToID("numOfGrassBlades");
         private static readonly int GlobalSeed = Shader.PropertyToID("GlobalSeed");
+        private static readonly int GrassColorTexture = Shader.PropertyToID("_GrassColorTexture");
 
         private NativeArray<GrassBladeData> m_GrassBlades;
         
@@ -35,7 +36,6 @@ namespace GhostOfTsushima.Runtime
         [SerializeField, Min(0)] private int smallNumberOfGrassBlades = 30;
         [SerializeField] private Vector3 BoundsMin = new Vector3(0,0,0);
         [SerializeField] private Vector3 BoundsMax = new Vector3(5,0,5);
-      //  private Vector3[] positions;
 
         private BatchRendererGroup m_BRG;
         
@@ -46,8 +46,9 @@ namespace GhostOfTsushima.Runtime
         
         // private ComputeBuffer m_ComputeBuffer;
         // [SerializeField] private ComputeShader m_ComputeShader;
+        [Required]
+        public Texture2D grassBladesTexture;
         
-
         private int kSizeOfFloat4 = sizeof(float) * 4;
         private const int kSizeOfMatrix = sizeof(float) * 4 * 4;
         private const int kSizeOfPackedMatrix = sizeof(float) * 4 * 3;
@@ -74,6 +75,7 @@ namespace GhostOfTsushima.Runtime
                 
            m_InstanceData = new GraphicsBuffer(GraphicsBuffer.Target.Raw, BufferCountForInstances(kBytesPerInstance,
                numOfGrassBlades, 2 * kSizeOfMatrix), sizeof(int));
+           if (grassBladesTexture) m_GrassMaterial.SetTexture(GrassColorTexture, grassBladesTexture );
 
             //TODO: Create a Compute Shader 
             // The compute shader will create numOfGrassBlades instances of GrassBladeData
@@ -245,17 +247,6 @@ namespace GhostOfTsushima.Runtime
             var matrices = new NativeArray<float4x4>(numOfGrassBlades, Allocator.TempJob);
             var objectToWorld = new NativeArray<PackedMatrix>(numOfGrassBlades, Allocator.TempJob);
             var worldToObject = new NativeArray<PackedMatrix>(numOfGrassBlades, Allocator.TempJob);
-            
-
-            // for (int i = 0; i < numOfGrassBlades; i++)
-            // {
-            //     matrices[i] = Matrix4x4.Translate(new Vector3(Random.Range(BoundsMin.x, BoundsMax.x), 
-            //         Random.Range(BoundsMin.y, BoundsMax.y), Random.Range(BoundsMin.z, BoundsMax.z)));
-            //     objectToWorld[i] = new PackedMatrix(matrices[i]);
-            //     worldToObject[i] = new PackedMatrix(matrices[i].inverse);
-            //     //objectToWorld[i] = matrices[i];
-            //    // Debug.Log("Object to World matrix of item_"+ i + ": " + objectToWorld[i]);
-            // }
             
             PopulateMatricesJob job = new PopulateMatricesJob
             {

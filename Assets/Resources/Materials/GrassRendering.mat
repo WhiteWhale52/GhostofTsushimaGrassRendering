@@ -28,6 +28,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _GrassColorTexture:
+        m_Texture: {fileID: 2800000, guid: 0cdfc48ecb8d485448262f09cc3e869a, type: 3}
+        m_Scale: {x: 25.84, y: 1}
+        m_Offset: {x: -7.18, y: 0}
     - _InteractionTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -38,17 +42,18 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Bend: 5.7
-    - _BlendFactor: 0.538
-    - _Height: 3.99
-    - _Midpoint: 0.377
-    - _Tilt: 0.715
-    - _Width: 0.03
+    - _Bend: 0.47
+    - _BlendFactor: 0.324
+    - _Height: 0.73
+    - _Midpoint: 0.65
+    - _Tilt: 0.67
+    - _ViewThickening: 0.4
+    - _Width: 0.05
     m_Colors:
     - P_0: {r: 0, g: 0, b: 0, a: 0}
     - P_1: {r: 0, g: 0, b: 0, a: 0}
     - P_2: {r: 0, g: 0, b: 0, a: 0}
-    - _LowerColor: {r: 0.13697505, g: 0.3962264, b: 0.09158064, a: 1}
-    - _UpperColor: {r: 0.6292967, g: 0.67058825, b: 0.086274505, a: 1}
+    - _LowerColor: {r: 0.22568478, g: 0.35220122, b: 0.20268181, a: 1}
+    - _UpperColor: {r: 0.35698122, g: 0.67058825, b: 0.086274505, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
