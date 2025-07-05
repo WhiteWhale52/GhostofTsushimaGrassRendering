@@ -388,9 +388,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
-  m_LocalPosition: {x: 0, y: 3, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0.26627922, y: 0.57977104, z: -0.20824404, w: 0.741347}
+  m_LocalPosition: {x: -2.3670943, y: 2.792422, z: 5.555562}
+  m_LocalScale: {x: 5.2603, y: 5.2603, z: 5.2603}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -498,11 +498,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GrassMesh: {fileID: 0}
   m_GrassMaterial: {fileID: 2100000, guid: 366c9cda78f37c24b831e0045e466ada, type: 2}
-  numOfGrassBlades: 1
+  numOfGrassBlades: 1000
   smallNumberOfGrassBlades: 30
   BoundsMin: {x: 0, y: 0, z: 0}
-  BoundsMax: {x: 10, y: 0, z: 10}
-  grassBladesTexture: {fileID: 2800000, guid: 0cdfc48ecb8d485448262f09cc3e869a, type: 3}
+  BoundsMax: {x: 100, y: 0, z: 100}
+  grassBladesTexture: {fileID: 2800000, guid: 52bb4062c93bdb34c9108a55e010c0e3, type: 3}
   jobBatchSize: 66
 --- !u!4 &1408049224
 Transform:
@@ -707,13 +707,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1940365111}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
   m_LocalPosition: {x: -3.8026667, y: -0.003, z: 4.7786627}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -49,7 +49,7 @@ Shader "Custom/TestingGroundsShader"
                  float C = dot(TransformedCameraDir.z, newUVsY);
                  float D = B * C  - 0.5f;
                  float E = D * 3;
-                 float Mask = pow((1-t), -0.08f) * pow((t + 0.5f),0.33f);
+                 float Mask = pow((1-t), -0.8f) * pow((t + 0.5f),0.33f);
                  float H = E * Mask;
                 // float3 normalDir = normalWS * float3(1,1,0);
                 // float3 Tilt = normalDir * H;

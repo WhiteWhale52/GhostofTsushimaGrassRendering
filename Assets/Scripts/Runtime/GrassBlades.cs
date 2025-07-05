@@ -147,7 +147,6 @@ namespace GhostOfTsushima.Runtime
 
             List<Vector3> vertices = new List<Vector3>();
             List<Vector2> uv0 = new List<Vector2>();
-            List<Vector2> curveParams = new List<Vector2>();
 
             for (int i = 0; i < 8; i++)
             {
@@ -157,17 +156,14 @@ namespace GhostOfTsushima.Runtime
                 {
                     vertices.Add(new Vector3(0, t, 0));
                     uv0.Add(new Vector2(0.5f, 1));
-                    curveParams.Add(new Vector2(0, 1));
                     continue;
                 }
 
                 vertices.Add(new Vector3(0f, t, 0.5f ));
-                uv0.Add(new Vector2(1, t));
-                curveParams.Add(new Vector2(-1f, t));   //<-- side offset = -1
+                uv0.Add(new Vector2(1-0.5f * 1/7 * i, t));
 
                 vertices.Add(new Vector3(0f, t, -0.5f));
-                uv0.Add(new Vector2(0, t));
-                curveParams.Add(new Vector2( 1f, t));    //<-- side offset = +1
+                uv0.Add(new Vector2(0 + 0.5f * 1/7 * i, t));
             }
 
             int[] triangles = new int[]
@@ -199,8 +195,6 @@ namespace GhostOfTsushima.Runtime
 
             mesh.SetUVs(0,uv0);
 
-            mesh.SetUVs(1,curveParams);
-
             mesh.RecalculateNormals();
 
             mesh.RecalculateBounds();
@@ -209,10 +203,7 @@ namespace GhostOfTsushima.Runtime
 
             uv0.Clear();
 
-            curveParams.Clear();
-
             triangles = Array.Empty<int>();
-
 
             return mesh;
         }
