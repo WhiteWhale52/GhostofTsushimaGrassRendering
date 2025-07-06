@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: GrassRendering
-  m_Shader: {fileID: 4800000, guid: 4cd2c2cd11615a841a04160b41ce558d, type: 3}
+  m_Shader: {fileID: 4800000, guid: 995f4ce00da74af3911032fd624a93b2, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
@@ -42,13 +42,17 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Bend: 1.92
+    - _BaseWidth: 0.05
+    - _Bend: 0
     - _BlendFactor: 0.393
-    - _Height: 1.43
-    - _Midpoint: 0.431
-    - _Tilt: 7.48
+    - _Curve: 0.31
+    - _Height: 0.85
+    - _Midpoint: 0.466
+    - _Tilt: 0
+    - _TiltY: 0.56
+    - _TiltZ: 0.3
     - _ViewThickening: 0
-    - _Width: 0.03
+    - _Width: 0.21
     m_Colors:
     - P_0: {r: 0, g: 0, b: 0, a: 0}
     - P_1: {r: 0, g: 0, b: 0, a: 0}
