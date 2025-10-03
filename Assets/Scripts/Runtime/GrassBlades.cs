@@ -162,17 +162,17 @@ namespace GhostOfTsushima.Runtime
                 if (i == 6)
                 {
                     vertices.Add(new Vector3(0, t, 0.5f));
-                    uv0.Add(new Vector2(1-0.47f, t + 1/12f));
+                    uv0.Add(new Vector2(1, t + 1/12f));
                     vertices.Add(new Vector3(0, t, -0.5f));
-                    uv0.Add(new Vector2(0.47f, t + 1/12f));
+                    uv0.Add(new Vector2(0, t + 1/12f));
                     continue;
                 }
 
                 vertices.Add(new Vector3(0f, t, 0.5f ));
-                uv0.Add(new Vector2(1-0.5f * 1/7 * i, t));
+                uv0.Add(new Vector2(1, t));
 
                 vertices.Add(new Vector3(0f, t, -0.5f));
-                uv0.Add(new Vector2(0 + 0.5f * 1/7 * i, t));
+                uv0.Add(new Vector2(0, t));
             }
 
             int[] triangles = new int[]

@@ -79,7 +79,6 @@
             float _BaseWidth;
             float _BlendFactor;
             float _ViewThickening;
-            float2 _FacingDirection;
             CBUFFER_END
 
 
@@ -92,14 +91,29 @@
             
             float3 GetBezierCurvePoint(float3 P_0, float3 P_1, float3 P_2, float t)
             {
-                return (1 - t) * (1 - t) * P_0 + 2 * t * (1 - t) * P_1 + t * t * P_2;
+                return lerp(lerp(P_0, P_1,t), lerp(P_1, P_2, t), t);
             }
 
            float3 GetBezierDerivative(float3 P0, float3 P1, float3 P2, float t)
             {
                return 2.0 * (1.0 - t) * (P1 - P0) + 2.0 * t * (P2 - P1);
             }
-            
+
+            float3 finalRotation(float3 originalPos, float tiltAlongZAxis, float tiltAlongYAxis)
+            {
+                 float3x3 transformationAlongZaxis = float3x3 (
+                     float3(cos(tiltAlongZAxis), -sin(tiltAlongZAxis), 0),
+                     float3(sin(tiltAlongZAxis), cos(tiltAlongZAxis), 0),
+                     float3(0          , 0          , 1)
+                     );
+                 float3x3 transformationAlongYaxis = float3x3 (
+                     float3(+cos(tiltAlongYAxis), 0, +sin(tiltAlongYAxis)),
+                     float3(+0          , 1,            0),
+                     float3(-sin(tiltAlongYAxis), 0, +cos(tiltAlongYAxis))
+                     );
+                return mul(transformationAlongYaxis, mul(transformationAlongZaxis, originalPos));
+            }
+
 
             float3 DisplaceVertByWindTexture(float3 originalPos)
             {
@@ -158,37 +172,48 @@
                 float w = v.uv.x;
 
                 float3 P_0 = float3(0,0,0);
-                 float3 P_2 = float3(_Height,0,0);
-                 
-                float3 MidPoint = (P_2 - P_0) * _Midpoint;
-                 float3 P_1 = float3(_Midpoint, _Curve, 0);
+                float3 P_2 = float3(_Height,0,0);
+
+                float3 P_1 = float3(_Midpoint * _Height, _Curve, 0);
                 float3 curvedPos =  GetBezierCurvePoint(P_0, P_1, P_2, positionAlongBlade);
-                 curvedPos = lerp(lerp(P_0, P_1,positionAlongBlade), lerp(P_1, P_2, positionAlongBlade), positionAlongBlade);
                 curvedPos.z += (1-positionAlongBlade+0.10f) * _Width * (w - 0.5f) * 2 * (positionAlongBlade + _BaseWidth);
+                float3 curveTangent = GetBezierDerivative(P_0, P_1, P_2, positionAlongBlade);
+                float3 orthogonalNormal = float3(-curveTangent.y , 0, curveTangent.x );
+                float3 facingDirection = float3(orthogonalNormal.z,0, -orthogonalNormal.x);
+                float3 vertNormal = normalize(cross(orthogonalNormal, curveTangent));
 
-
-                 float3x3 transformationAlongZaxis = float3x3 (
-                     float3(cos(_TiltZ), -sin(_TiltZ), 0),
-                     float3(sin(_TiltZ), cos(_TiltZ), 0),
-                     float3(0          , 0          , 1)
-                     );
-                 float3x3 transformationAlongYaxis = float3x3 (
-                     float3(+cos(_TiltY), 0, +sin(_TiltY)),
-                     float3(+0          , 1,            0),
-                     float3(-sin(_TiltY), 0, +cos(_TiltY))
-                     );
-
-                 float3 rotatedPos = mul(transformationAlongYaxis, mul(transformationAlongZaxis, curvedPos));
+                float shiftedUVsX = v.uv.x - 0.5f;
+                float midribSoftness = 0.08f;
+                float smoothedMidrib = smoothstep(-midribSoftness, midribSoftness, shiftedUVsX);
+                float rimPosition = 0.5f;
+                float rimSoftness = 0.08f;
+                float smoothedRim = smoothstep(rimPosition, rimPosition - rimSoftness, abs(shiftedUVsX));
+                float lerpedA = lerp(1 - smoothedMidrib, smoothedMidrib, smoothedRim);
+                float lerpedColorShift = lerp(1,-1,lerpedA);
+                float normalStrength = 0.3f;
+               // vertNormal.x += normalStrength * lerpedColorShift; 
+                float3 viewDirection = normalize(_WorldSpaceCameraPos - TransformObjectToWorld(v.positionOS));
+                float3x3 worldToObject = (float3x3)GetWorldToObjectMatrix();
+                float localViewDirectionX = mul(worldToObject, viewDirection).x;
+                float A = -localViewDirectionX * shiftedUVsX;
+                float viewDirXAbsPosSat = saturate(pow(abs(localViewDirectionX),1.8f));
+                float B = viewDirXAbsPosSat * A;
+                float C = _ViewThickening * B;
+                float correctedPos = saturate(pow(positionAlongBlade + 0.5f, 0.33f) * pow(1 - positionAlongBlade, 0.8f));
+                float3 normal = normalize(vertNormal * float3(1,1,0) * correctedPos);
+                 
+                 float3 rotatedPos = finalRotation(curvedPos, _TiltZ, _TiltY);
+                 float3 rotatedNormal = finalRotation(vertNormal, _TiltZ, _TiltY);
                 //TODO: Compute ortho-normal direction by getting the per-blade facing direction
                 // flipping the x and z axis and negating one
                 // Then step the vertices in that direction based on width
-                
+
                 //TODO: Define the vertex normal, by finding the derivative of the bezier curve
                 // at the position and cross it with ortho-normal we found
-                
+
                 // TODO: Perform some bobbing up and down based on a sine wave, where
                 // the phase offset is affected by the per-blade hash
-                
+
                 // TODO: Tilt the vertices normal to give the blades a more rounded natural look
                  
                 UNITY_SETUP_INSTANCE_ID(v);
@@ -196,19 +221,23 @@
 
                 const VertexPositionInputs positionInputs = GetVertexPositionInputs(rotatedPos);
                 o.positionCS = positionInputs.positionCS;
+               // o.positionCS += abs(float4(normal,1) * C);
                 o.uv = v.uv;
-                o.normalWS = float3(1,0,0);
-                o.color= float4(0,0,0,1);
+                o.normalWS = TransformObjectToWorldNormal(rotatedNormal);
+                o.color=    float4(o.normalWS,1);
                 return o;
             }
 
-            float4 frag (VertOutput i) : SV_Target
+            float4 frag (VertOutput i, bool isFrontFacing : SV_IsFrontFace) : SV_Target
             {
+                return i.color;
+                if (!isFrontFacing) i.normalWS = -i.normalWS; 
+                //return float4(i.normalWS,1);
                 float4 col = half4(SAMPLE_TEXTURE2D(_GrassColorTexture,sampler_GrassColorTexture, i.uv));
                 float3 lightDir = normalize(_MainLightPosition.xyz);
-                float3 viewDir = normalize(_WorldSpaceCameraPos - (i.positionCS));
-                float NdotL = saturate(-dot(i.normalWS, lightDir));
-                float3 baseColor = lerp( _LowerColor,_UpperColor, col.r).rgb * NdotL * _MainLightColor.rgb;
+                //float3 viewDir = normalize(_WorldSpaceCameraPos - (i.positionCS));
+                float NdotL = saturate(dot(i.normalWS, lightDir));
+                float3 baseColor = lerp( _LowerColor,_UpperColor, col.g).rgb * NdotL * _MainLightColor.rgb;
                 
                 // TODO: Add the diffuse colors
                 // Two textures are combined:

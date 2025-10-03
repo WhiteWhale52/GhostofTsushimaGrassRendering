@@ -42,17 +42,17 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BaseWidth: 0.05
+    - _BaseWidth: 0.14
     - _Bend: 0
     - _BlendFactor: 0.393
-    - _Curve: 0.31
-    - _Height: 0.85
-    - _Midpoint: 0.466
+    - _Curve: 1.5
+    - _Height: 1.57
+    - _Midpoint: 1
     - _Tilt: 0
-    - _TiltY: 0.56
-    - _TiltZ: 0.3
+    - _TiltY: 1.61
+    - _TiltZ: 0.97
     - _ViewThickening: 0
-    - _Width: 0.21
+    - _Width: 0.15
     m_Colors:
     - P_0: {r: 0, g: 0, b: 0, a: 0}
     - P_1: {r: 0, g: 0, b: 0, a: 0}
