@@ -15,7 +15,7 @@
             #pragma fragment frag
             #include "UnityCG.cginc"
 
-            struct Metadata {
+            struct appdata {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
             };
@@ -31,7 +31,7 @@
             float4 _SirenixOdin_GUIUv;
             float4 _SirenixOdin_HueColor;
 
-            v2f vert(Metadata v) {
+            v2f vert(appdata v) {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;

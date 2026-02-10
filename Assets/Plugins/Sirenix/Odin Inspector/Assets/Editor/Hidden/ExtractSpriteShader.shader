@@ -19,7 +19,7 @@ Shader "Hidden/Sirenix/Editor/ExtractSprite"
             #pragma fragment frag
             #include "UnityCG.cginc"
 
-            struct Metadata {
+            struct appdata {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
             };
@@ -32,7 +32,7 @@ Shader "Hidden/Sirenix/Editor/ExtractSprite"
             sampler2D _MainTex;
             float4 _Rect;
 
-            v2f vert(Metadata v) {
+            v2f vert(appdata v) {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;

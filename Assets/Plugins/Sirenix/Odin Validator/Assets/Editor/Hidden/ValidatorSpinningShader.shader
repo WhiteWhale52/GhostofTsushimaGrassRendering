@@ -15,7 +15,7 @@
             #pragma fragment frag
             #include "UnityCG.cginc"
 
-            struct Metadata {
+            struct appdata {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
             };
@@ -33,7 +33,7 @@
             float _SirenixOdinSpinner_SpinTime;
             float _SirenixOdinSpinner_T;
 
-            v2f vert(Metadata v) {
+            v2f vert(appdata v) {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
