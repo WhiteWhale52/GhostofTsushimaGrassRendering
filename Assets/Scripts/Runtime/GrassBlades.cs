@@ -27,7 +27,7 @@ namespace GhostOfTsushima.Runtime
         private static readonly int GlobalSeed = Shader.PropertyToID("GlobalSeed");
         private static readonly int GrassColorTexture = Shader.PropertyToID("_GrassColorTexture");
 
-        private NativeArray<GrassBladeData> m_GrassBlades;
+        //private NativeArray<GrassBladeData> m_GrassBlades;
         
         [SerializeField] private Mesh m_GrassMesh;
         [SerializeField] private Material m_GrassMaterial;

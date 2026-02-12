@@ -2,35 +2,37 @@
 
 namespace GhostOfTsushima.Runtime
 {
-    public partial class GrassBlades
+    struct GrassBladeInstanceData
     {
-        private struct GrassBladeData
-        {
 
-            public float3 Position;
+        public float3 Position;
 
-            public float2 FacingDirection;
+        public float2 FacingDirection;
 
-            public float WindStrength;
+        public float Height;
 
-            public float ClumpColor;
-            
-            public float2 ClumpFacingDirection;
+        public float Width;
 
-            public float Height;
+        public float TiltAngle;
 
-            public float Width;
+        public float CurvatureStrength;
 
-            public float Tilt;
+        public float BladeHash;
 
-            public float Bend;
+        public int GrassTypeProfile;
 
-            public int BladeHash;
+        public float WindStrength;
 
-            public int GrassType;
+        public float WindPhaseOffset;
 
-            public float Midpoint;
+    }
 
-        }
+    struct HermiteCurveParams {
+        public float3 controlPoint0;
+        public float3 controlPoint1;
+
+        public float3 rootTangent;
+        public float3 tipTangent;
+
     }
 }
