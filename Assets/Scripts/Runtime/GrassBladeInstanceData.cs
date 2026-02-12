@@ -35,4 +35,14 @@ namespace GhostOfTsushima.Runtime
         public float3 tipTangent;
 
     }
+
+    struct BladeVertex {
+   
+        public float3 position;
+        public float3 normal;
+        public float2 uv;
+
+        public int paramAlongBlade;
+        public int sideOfBlade;
+    }
 }

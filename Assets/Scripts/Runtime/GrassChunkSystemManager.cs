@@ -32,7 +32,7 @@ namespace GhostOfTsushima.Runtime
         uint x;
         uint z;
 
-        uint GetHashCode(){
+		public uint GetHashCode(){
 			uint hash = x;
 			hash ^= z + 0x9e3779b9 + (hash << 6) + (hash >> 2); 
 			return hash;
@@ -44,9 +44,9 @@ namespace GhostOfTsushima.Runtime
     }
 
     struct GrassChunk {
-        ChunkCoordinate coordinate;
-        float3 worldOrigin;
-        Bounds bounds;
+		public ChunkCoordinate coordinate;
+		public float3 worldOrigin;
+		public Bounds bounds;
 
         NativeArray<GrassBladeInstanceData> grassBladeInstances;
 
