@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -5,19 +6,26 @@ using UnityEngine.Rendering;
 
 namespace GhostOfTsushima.Runtime
 {
-    public class ChunkSystemManager : MonoBehaviour
+    public class GrassChunkSystemManager : MonoBehaviour
     {
-        // Start is called once before the first execution of Update after the MonoBehaviour is created
-        void Start()
-        {
-        
-        }
+        // Configurations 
+            float chunkSize = 16.0f;
+            // Number of Chunks visible in each direction
+            int viewDistance = 3;
+            int maxBladesPerChunk = 5000;
+        //
 
-        // Update is called once per frame
-        void Update()
-        {
-        
-        }
+        // Runtime Data
+            Dictionary<ChunkCoordinate, GrassChunk> activeChunks;
+            Queue<GrassChunk> chunkQueue;
+        //
+
+        // References
+        Transform cameraTransform = Camera.main.transform;
+        Mesh TemplateGrassMesh;
+        Material TemplateGrassMaterial;
+        //
+
     }
 
     struct ChunkCoordinate {
