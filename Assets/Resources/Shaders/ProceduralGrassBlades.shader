@@ -148,7 +148,7 @@ Shader "Custom/ProceduralGrassBlades_BRG"
                 float3 SampleWind(float3 worldPos, float time, float phase, float stiffness, float t)
                 {
                     float2 windUV = worldPos.xz * 0.01;
-                    float4 windData = SAMPLE_TEXTURE2D(_WindTexture, sampler_WindTexture, windUV);
+                    float4 windData = SAMPLE_TEXTURE2D_LOD(_WindTexture, sampler_WindTexture, windUV, 0);
                 
                     float2 windDir = windData.rg * 2.0 - 1.0;
                     float windStrength = windData.b;
@@ -244,7 +244,7 @@ Shader "Custom/ProceduralGrassBlades_BRG"
                 BuildBladeFrame(tangent, facingAngle, T, S, N);
                 
                 // ===== COMPUTE WIDTH =====
-                float widthTaper = pow(1.0 - t, 1.3);
+                float widthTaper = pow(max(0.0,1.0 - t), 1.3);
                 widthTaper *= (0.9 + 0.2 * bladeHash);
                 float currentWidth = width * widthTaper;
                 
