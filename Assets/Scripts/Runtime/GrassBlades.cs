@@ -27,11 +27,14 @@ namespace GhostOfTsushima.Runtime
         private static readonly int GlobalSeed = Shader.PropertyToID("GlobalSeed");
         private static readonly int GrassColorTexture = Shader.PropertyToID("_GrassColorTexture");
 
-        private NativeArray<GrassBladeData> m_GrassBlades;
-        
+        //private NativeArray<GrassBladeData> m_GrassBlades;
+
+        private GrassChunkSystemManager chunkSystemManager;
+        private int updateFrameCounter = 0;
+
         [SerializeField] private Mesh m_GrassMesh;
         [SerializeField] private Material m_GrassMaterial;
-        [SerializeField] private int numOfGrassBlades = 1 * 10^6;
+        [SerializeField] private int numOfGrassBlades = 5000;
         
         [SerializeField, Min(0)] private int smallNumberOfGrassBlades = 30;
         [SerializeField] private Vector3 BoundsMin = new Vector3(0,0,0);
@@ -55,6 +58,8 @@ namespace GhostOfTsushima.Runtime
         private const int kBytesPerInstance = (kSizeOfPackedMatrix * 2);
 
 
+        [SerializeField] private int chunkUpdateFrames = 10;
+
         public int jobBatchSize;
 
         
@@ -70,12 +75,7 @@ namespace GhostOfTsushima.Runtime
             if (m_GrassMaterial) m_MaterialID = m_BRG.RegisterMaterial(m_GrassMaterial);
             
             
-          //  m_ComputeShader = Resources.Load<ComputeShader>("Compute Shaders/PositionsCompute");
-        //    m_ComputeBuffer = new ComputeBuffer(smallNumberOfGrassBlades, 3 * sizeof(float));
-                
-           m_InstanceData = new GraphicsBuffer(GraphicsBuffer.Target.Raw, BufferCountForInstances(kBytesPerInstance,
-               numOfGrassBlades, 2 * kSizeOfMatrix), sizeof(int));
-           if (grassBladesTexture) m_GrassMaterial.SetTexture(GrassColorTexture, grassBladesTexture );
+        
 
             //TODO: Create a Compute Shader 
             // The compute shader will create numOfGrassBlades instances of GrassBladeData
@@ -120,186 +120,208 @@ namespace GhostOfTsushima.Runtime
             // TODO: Finally add the batch to m_BRG
         }
 
-        private void OnDisable()
-        {
-            m_BRG.Dispose();
-//            m_ComputeBuffer.Release();
-            m_InstanceData.Release();
-        }
+       
 
         private void Start()
         {
-            GameObject GO = new GameObject("Grass Blade");
-            GO.AddComponent<MeshFilter>();
-            GO.AddComponent<MeshRenderer>();
-            GO.GetComponent<MeshRenderer>().material = m_GrassMaterial;
-            GO.GetComponent<MeshFilter>().mesh = m_GrassMesh;
+			chunkSystemManager = new GrassChunkSystemManager(
+			m_BRG,
+			m_GrassMesh,
+			m_GrassMaterial,
+			Camera.main.transform
+		    );
 
-            PopulateInstanceDataBuffer();
-
+            chunkSystemManager.UpdateVisibleChunks();
 
         }
-        
-        
-        Mesh CreateHighLODGrassBladesMesh()
+
+
+		private void Update()
+		{
+			updateFrameCounter++;
+
+			// Update chunks every chunkUpdateFrames frames
+			if (updateFrameCounter % chunkUpdateFrames == 0)
+			{
+				chunkSystemManager?.UpdateVisibleChunks();
+			}
+		}
+
+		Mesh CreateHighLODGrassBladesMesh()
         {
-            Mesh mesh = new Mesh();
 
-            List<Vector3> vertices = new List<Vector3>();
-            List<Vector2> uv0 = new List<Vector2>();
+			Mesh mesh = new Mesh();
 
-            for (int i = 0; i < 8; i++)
-            {
-                float t = i / (float)(8 - 1);
+			int segments = 7; // Start with 7 for testing
+			List<Vector3> vertices = new List<Vector3>();
+			List<Vector2> uvs = new List<Vector2>();
+			List<int> triangles = new List<int>();
 
-                if (i == 7)
-                {
-                    vertices.Add(new Vector3(0, t, 0));
-                    uv0.Add(new Vector2(0.5f, 1));
-                    continue;
-                }
+			// Build blade as a ribbon
+			for (int i = 0; i <= segments; i++)
+			{
+				float t = i / (float)segments;
 
-                if (i == 6)
-                {
-                    vertices.Add(new Vector3(0, t, 0.5f));
-                    uv0.Add(new Vector2(1, t + 1/12f));
-                    vertices.Add(new Vector3(0, t, -0.5f));
-                    uv0.Add(new Vector2(0, t + 1/12f));
-                    continue;
-                }
+				// Left vertex
+				vertices.Add(Vector3.zero); // Position computed in shader
+				uvs.Add(new Vector2(0.0f, t)); // UV encodes: left side, height t
 
-                vertices.Add(new Vector3(0f, t, 0.5f ));
-                uv0.Add(new Vector2(1, t));
+				// Right vertex
+				vertices.Add(Vector3.zero); // Position computed in shader
+				uvs.Add(new Vector2(1.0f, t)); // UV encodes: right side, height t
+			}
 
-                vertices.Add(new Vector3(0f, t, -0.5f));
-                uv0.Add(new Vector2(0, t));
-            }
+			// Build triangles
+			for (int i = 0; i < segments; i++)
+			{
+				int baseIdx = i * 2;
 
-            int[] triangles = new int[]
-            {
-                 1,0,3,
-                 0,2,3,
-                 
-                 3,2,5,
-                 2,4,5,
-                 
-                 5,4,7,
-                 4,6,7,
-                 
-                 7,6,9,
-                 6,8,9,
-                 
-                 9,8,11,
-                 8,10,11,
-                 
-                 11,10,13,
-                 10,12,13,
-                 
-                 13,12,14
-            };
+				// Triangle 1
+				triangles.Add(baseIdx + 0);
+				triangles.Add(baseIdx + 1);
+				triangles.Add(baseIdx + 2);
 
-            mesh.vertices = vertices.ToArray();
+				// Triangle 2
+				triangles.Add(baseIdx + 1);
+				triangles.Add(baseIdx + 3);
+				triangles.Add(baseIdx + 2);
+			}
 
-            mesh.triangles = triangles;
+			mesh.SetVertices(vertices);
+			mesh.SetUVs(0, uvs);
+			mesh.SetTriangles(triangles, 0);
 
-            mesh.SetUVs(0,uv0);
+			// DON'T call RecalculateNormals - shader computes them
+			mesh.RecalculateBounds();
 
-            mesh.RecalculateNormals();
-
-            mesh.RecalculateBounds();
-
-            vertices.Clear();
-
-            uv0.Clear();
-
-            triangles = Array.Empty<int>();
-
-            return mesh;
-        }
+			return mesh;
+		}
         
-        //TODO: Make a low LOD grass blade mesh
+
         
-        
-        // private void AllocateInstanceDataBuffer()
-        // {
-        //     m_InstanceData = new GraphicsBuffer(GraphicsBuffer.Target.Raw,
-        //         BufferCountForInstances(kBytesPerInstance, numOfGrassBlades, kExtraBytes),
-        //         sizeof(int));
-        // }
-        
-        [BurstCompile]
-        private void PopulateInstanceDataBuffer()
-        {
-            /*int kernel = m_ComputeShader.FindKernel("GrassPosCompute");
-            int threadCountX = Mathf.CeilToInt(6);
-            int threadCountY = Mathf.CeilToInt(1);
-            int threadCountZ = Mathf.CeilToInt(1);
-            m_ComputeShader.SetVector(Min, BoundsMin);
-            m_ComputeShader.SetVector(Max, BoundsMax);
-          //  m_ComputeShader.SetInt(NumOfGrassBlades, smallNumberOfGrassBlades);
-            m_ComputeShader.SetInt(GlobalSeed, Random.Range(0,100000));
-            m_ComputeShader.SetBuffer(kernel, GrassPositions, m_ComputeBuffer);
-            m_ComputeShader.Dispatch(kernel, threadCountX, threadCountY, threadCountZ);
-            positions = new Vector3[numOfGrassBlades];
-            m_ComputeBuffer.GetData(positions); */
+   //     [BurstCompile]
+   //     private void PopulateInstanceDataBuffer()
+   //     {
+
+			//var bladeParameters = new NativeArray<GrassBladeInstanceData>(numOfGrassBlades, Allocator.Temp);
             
-            var zero = new float4x4[1] { float4x4.zero };
-            var matrices = new NativeArray<float4x4>(numOfGrassBlades, Allocator.TempJob);
-            var objectToWorld = new NativeArray<PackedMatrix>(numOfGrassBlades, Allocator.TempJob);
-            var worldToObject = new NativeArray<PackedMatrix>(numOfGrassBlades, Allocator.TempJob);
+   //         PopulateBladeParametersJob job = new PopulateBladeParametersJob
+   //         {
+   //                 bladeInstances = bladeParameters,
+   //                 boundsMin = BoundsMin,
+   //                 boundsMax = BoundsMax,
+   //                 rand = new Unity.Mathematics.Random((uint)Time.realtimeSinceStartup * 43)
+   //         };
+   //         JobHandle handle = job.Schedule(numOfGrassBlades, jobBatchSize);
+   //         handle.Complete();
             
-            PopulateMatricesJob job = new PopulateMatricesJob
-            {
-                    defaultMatrices = matrices,
-                    ObjectToWorld = objectToWorld,
-                    WorldToObject = worldToObject,
-                    BoundsMin = BoundsMin,
-                    BoundsMax = BoundsMax,
-                    rand = new Unity.Mathematics.Random((uint)Time.realtimeSinceStartup * 43)
-            };
-            JobHandle handle = job.Schedule(numOfGrassBlades, jobBatchSize);
-            handle.Complete();
-            
-          
 
-            // In this simple example, the instance data is placed into the buffer like this:
-            // Offset | Description
-            //      0 | 64 bytes of zeroes, so loads from address 0 return zeroes
-            //     64 | 32 uninitialized bytes to make working with SetData easier, otherwise unnecessary
-            //     96 | unity_ObjectToWorld, three packed float3x4 matrices
-            //    240 | unity_WorldToObject, three packed float3x4 matrices
+   //         // In this simple example, the instance data is placed into the buffer like this:
+   //         // Offset | Description
+   //         //      0 | 64 bytes of zeroes, so loads from address 0 return zeroes
+   //         //     64 | 32 uninitialized bytes to make working with SetData easier, otherwise unnecessary
+   //         //     96 | unity_ObjectToWorld, three packed float3x4 matrices
+   //         //    240 | unity_WorldToObject, three packed float3x4 matrices
 
-            // Calculates start addresses for the different instanced properties. unity_ObjectToWorld starts
-            // at address 96 instead of 64, because the computeBufferStartIndex parameter of SetData
-            // is expressed as source array elements, so it is easier to work in multiples of sizeof(PackedMatrix).
-            uint byteAddressObjectToWorld = kSizeOfPackedMatrix * 2;
-            uint byteAddressWorldToObject = byteAddressObjectToWorld + kSizeOfPackedMatrix * (uint) numOfGrassBlades;
-       //    uint byteAddressColor = byteAddressWorldToObject + kSizeOfPackedMatrix * (uint) smallNumberOfGrassBlades;
+   //         // Calculates start addresses for the different instanced properties. unity_ObjectToWorld starts
+   //         // at address 96 instead of 64, because the computeBufferStartIndex parameter of SetData
+   //         // is expressed as source array elements, so it is easier to work in multiples of sizeof(PackedMatrix).
+   //         int sizeOfBladeData = UnsafeUtility.SizeOf<GrassBladeInstanceData>();
+   //         uint byteAddressBladeData = 64;
+   //    //    uint byteAddressColor = byteAddressWorldToObject + kSizeOfPackedMatrix * (uint) smallNumberOfGrassBlades;
 
-            // Upload the instance data to the GraphicsBuffer so the shader can load them.
-            m_InstanceData.SetData(zero, 0, 0, 1);
-            m_InstanceData.SetData(objectToWorld, 0, (int)(byteAddressObjectToWorld / kSizeOfPackedMatrix), objectToWorld.Length);
-            m_InstanceData.SetData(worldToObject, 0, (int)(byteAddressWorldToObject / kSizeOfPackedMatrix), worldToObject.Length);
+   //         // Upload the instance data to the GraphicsBuffer so the shader can load them.
+   //         var zero = new float4x4[1] { float4x4.zero };
+   //         m_InstanceData.SetData(zero, 0, 0, 1);
+   //         m_InstanceData.SetData(bladeParameters, 0, 1, bladeParameters.Length);
 
-            // Set up metadata values to point to the instance data. Set the most significant bit 0x80000000 in each
-            // which instructs the shader that the data is an array with one value per instance, indexed by the instance index.
-            // Any metadata values that the shader uses that are not set here will be 0. When a value of 0 is used with
-            // UNITY_ACCESS_DOTS_INSTANCED_PROP (i.e. without a default), the shader interprets the
-            // 0x00000000 metadata value and loads from the start of the buffer. The start of the buffer is
-            // a zero matrix so this sort of load is guaranteed to return zero, which is a reasonable default value.
-            var metadata = new NativeArray<MetadataValue>(2, Allocator.Temp);
-            metadata[0] = new MetadataValue { NameID = Shader.PropertyToID("unity_ObjectToWorld"), Value = 0x80000000 | byteAddressObjectToWorld, };
-            metadata[1] = new MetadataValue { NameID = Shader.PropertyToID("unity_WorldToObject"), Value = 0x80000000 | byteAddressWorldToObject, };
-         //   metadata[2] = new MetadataValue { NameID = Shader.PropertyToID("_BaseColor"), Value = 0x80000000 | byteAddressColor, };
+   //         // Set up metadata values to point to the instance data. Set the most significant bit 0x80000000 in each
+   //         // which instructs the shader that the data is an array with one value per instance, indexed by the instance index.
+   //         // Any metadata values that the shader uses that are not set here will be 0. When a value of 0 is used with
+   //         // UNITY_ACCESS_DOTS_INSTANCED_PROP (i.e. without a default), the shader interprets the
+   //         // 0x00000000 metadata value and loads from the start of the buffer. The start of the buffer is
+   //         // a zero matrix so this sort of load is guaranteed to return zero, which is a reasonable default value.
+   //         var metadata = new NativeArray<MetadataValue>(10, Allocator.Temp);
+			//int offset = 64; // Start after zero block
 
-            // Finally, create a batch for the instances and make the batch use the GraphicsBuffer with the
-            // instance data as well as the metadata values that specify where the properties are.
-            m_BatchID = m_BRG.AddBatch(metadata, m_InstanceData.bufferHandle);
-            matrices.Dispose();
-            objectToWorld.Dispose();
-            worldToObject.Dispose();
-         //   m_GrassMaterial.SetBuffer(InstanceData, m_InstanceData);
-        }
+			//metadata[0] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_Position"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 12; // float3 = 12 bytes (but aligned to 16)
+			//offset = (offset + 15) & ~15; // Round up to next 16-byte boundary
+
+			//metadata[1] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_FacingAngle"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 4;
+
+			//metadata[2] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_Height"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 4;
+
+			//metadata[3] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_Width"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 4;
+
+			//metadata[4] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_Curvature"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 4;
+
+			//metadata[5] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_Lean"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 4;
+
+			//metadata[6] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_ColorSeed"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 4;
+
+			//metadata[7] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_BladeHash"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 4;
+
+			//metadata[8] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_Stiffness"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+			//offset += 4;
+
+			//metadata[9] = new MetadataValue
+			//{
+			//	NameID = Shader.PropertyToID("_WindPhaseOffset"),
+			//	Value = 0x80000000 | (uint)offset
+			//};
+
+   //         // Finally, create a batch for the instances and make the batch use the GraphicsBuffer with the
+   //         // instance data as well as the metadata values that specify where the properties are.
+   //         m_BatchID = m_BRG.AddBatch(metadata, m_InstanceData.bufferHandle);
+
+   //         bladeParameters.Dispose();
+   //         metadata.Dispose();
+
+   //     }
 
 
         [BurstCompile]
@@ -324,7 +346,7 @@ namespace GhostOfTsushima.Runtime
              drawCommands->drawCommands = (BatchDrawCommand*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawCommand>(), alignment, Allocator.TempJob);
              drawCommands->drawRanges = (BatchDrawRange*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawRange>(), alignment, Allocator.TempJob);
              drawCommands->visibleInstances = (int*)UnsafeUtility.Malloc(numOfGrassBlades * sizeof(int), alignment, Allocator.TempJob);
-             drawCommands->drawCommandPickingInstanceIDs = null;
+             drawCommands->drawCommandPickingEntityIds = null;
 
              drawCommands->drawCommandCount = 1;
              drawCommands->drawRangeCount = 1;
@@ -392,24 +414,51 @@ namespace GhostOfTsushima.Runtime
         }
 
         [BurstCompile]
-        private struct PopulateMatricesJob : IJobParallelFor
+        private struct PopulateBladeParametersJob : IJobParallelFor
         {
-            public NativeArray<float4x4> defaultMatrices;
-            public NativeArray<PackedMatrix> ObjectToWorld;
-            public NativeArray<PackedMatrix> WorldToObject;
-            public float3 BoundsMin;
-            public float3 BoundsMax;
+            [WriteOnly] public NativeArray<GrassBladeInstanceData> bladeInstances;    
+
+            public float3 boundsMin;
+            public float3 boundsMax;
             public Unity.Mathematics.Random rand;
             
             public void Execute(int index)
             {
-                float3 transformation = new float3(rand.NextFloat3(BoundsMin, BoundsMax));
-                defaultMatrices[index] = float4x4.TRS(transformation, Quaternion.identity, Vector3.one);
-                ObjectToWorld[index] = new PackedMatrix(defaultMatrices[index]);
-                WorldToObject[index] = new PackedMatrix(math.inverse(defaultMatrices[index]));
+                float3 size = boundsMax - boundsMin;
+
+                float3 randomPos = boundsMin + new float3(
+                rand.NextFloat() * size.x,
+                0.0f,
+                rand.NextFloat() * size.z);
+
+                bladeInstances[index] = new GrassBladeInstanceData
+                {
+                    position = randomPos,
+                    facingAngle = rand.NextFloat() * 2.0f * math.PI,
+
+                    height = rand.NextFloat(0.5f, 1.5f),
+                    width = rand.NextFloat(0.02f, 0.04f),
+                    curvatureStrength = rand.NextFloat(-0.4f, 0.4f),
+                    lean = rand.NextFloat(-0.2f, 0.2f),
+
+                    shapeProfileID = rand.NextInt(0, 8),
+                    colorVariationSeed = rand.NextFloat(),
+                    bladeHash = rand.NextFloat(),
+                    stiffness = rand.NextFloat(0.3f, 0.8f),
+
+                    windPhaseOffset = rand.NextFloat(0, 2f * math.PI),
+                    windStrength = rand.NextFloat(0.8f, 1.2f),
+                };
+
             }
         }
+		private void OnDisable()
+		{
+            chunkSystemManager?.Dispose();
+			m_BRG.Dispose();
+			m_InstanceData.Release();
+		}
 
-  
-    }
+	}
+     
 }
