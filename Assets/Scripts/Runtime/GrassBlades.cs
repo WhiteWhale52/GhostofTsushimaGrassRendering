@@ -42,7 +42,7 @@ namespace GhostOfTsushima.Runtime
 
         private BatchRendererGroup m_BRG;
         
-        private GraphicsBuffer m_InstanceData;
+        //private GraphicsBuffer m_InstanceData;
         private BatchID m_BatchID;
         private BatchMeshID m_MeshID;
         private BatchMaterialID m_MaterialID;
@@ -128,12 +128,13 @@ namespace GhostOfTsushima.Runtime
 			m_BRG,
 			m_GrassMesh,
 			m_GrassMaterial,
-			Camera.main.transform
-		    );
+			Camera.main.transform		 
+            );
 
             chunkSystemManager.UpdateVisibleChunks();
 
         }
+
 
 
 		private void Update()
@@ -199,6 +200,7 @@ namespace GhostOfTsushima.Runtime
         
 
         
+   //     PopulateInstanceDataBuffer
    //     [BurstCompile]
    //     private void PopulateInstanceDataBuffer()
    //     {
@@ -325,7 +327,8 @@ namespace GhostOfTsushima.Runtime
 
 
         [BurstCompile]
-        private unsafe JobHandle OnPerformCulling(BatchRendererGroup rendererGroup, BatchCullingContext cullingContext, BatchCullingOutput cullingOutput, IntPtr userContext)
+        private unsafe JobHandle OnPerformCulling(BatchRendererGroup rendererGroup, 
+        BatchCullingContext cullingContext, BatchCullingOutput cullingOutput, IntPtr userContext)
         {
                 // UnsafeUtility.Malloc() requires an alignment, so use the largest integer type's alignment
              // which is a reasonable default.
@@ -361,9 +364,11 @@ namespace GhostOfTsushima.Runtime
              // IDs registered in the Start() method. It doesn't set any special flags.
              drawCommands->drawCommands[0].visibleOffset = 0;
              drawCommands->drawCommands[0].visibleCount = (uint) numOfGrassBlades;
-             drawCommands->drawCommands[0].batchID = m_BatchID;
-             drawCommands->drawCommands[0].materialID = m_MaterialID;
-             drawCommands->drawCommands[0].meshID = m_MeshID;
+             foreach (GrassChunk chunk in chunkSystemManager.GetActiveChunks().Values){ 
+                 drawCommands->drawCommands[0].batchID = chunk.m_BatchID;
+                 drawCommands->drawCommands[0].materialID = m_MaterialID;
+                 drawCommands->drawCommands[0].meshID = m_MeshID;
+             }
              drawCommands->drawCommands[0].submeshIndex = 0;
              drawCommands->drawCommands[0].splitVisibilityMask = 0xff;
              drawCommands->drawCommands[0].flags = 0;
@@ -456,7 +461,7 @@ namespace GhostOfTsushima.Runtime
 		{
             chunkSystemManager?.Dispose();
 			m_BRG.Dispose();
-			m_InstanceData.Release();
+			//m_InstanceData.Release();
 		}
 
 	}

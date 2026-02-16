@@ -11,9 +11,15 @@ using UnityEngine.Rendering;
 namespace GhostOfTsushima.Runtime
 {
 
-    struct ChunkCoordinate {
-        public uint x, z;
+	public struct ChunkCoordinate : System.IEquatable<ChunkCoordinate>
+	{
+		public uint x, z;
 
+		public ChunkCoordinate(int x, int z)
+		{
+			this.x = (uint)x;
+			this.z = (uint)z;
+		}
 
 
 		public override int GetHashCode(){
@@ -22,17 +28,13 @@ namespace GhostOfTsushima.Runtime
 			return (int)hash;
 		}
 
-        public ChunkCoordinate(int x, int z) {
-			this.x = (uint)x;
-			this.z = (uint)z;
-		}
 
-		public bool Equals(ChunkCoordinate other)  // ← IEquatable
+		public bool Equals(ChunkCoordinate other)  
 		{
 			return x == other.x && z == other.z;
 		}
 
-		public override bool Equals(object obj)  // ← Also override this
+		public override bool Equals(object obj)  
 		{
 			return obj is ChunkCoordinate other && Equals(other);
 		}
@@ -48,7 +50,7 @@ namespace GhostOfTsushima.Runtime
 		}
 	}
 
-    class GrassChunk {
+    public class GrassChunk {
 		public ChunkCoordinate coordinate;
 		public float3 worldOrigin;
 		public Bounds bounds;
@@ -58,24 +60,22 @@ namespace GhostOfTsushima.Runtime
 		public float distanceToCamera;
 		public int lastUpdateFrame;
 
-        NativeArray<GrassBladeInstanceData> grassBladeInstances;
-
-		public int seed;
-		public int currentLODLevel;
+        //NativeArray<GrassBladeInstanceData> grassBladeInstances;
 
 		public GraphicsBuffer m_InstanceData;
 		public int instanceCount;
 		public BatchID m_BatchID;
 
+		public int seed;
+		public int currentLODLevel;
 		public void Dispose()
 		{
 			m_InstanceData?.Dispose();
-			if (grassBladeInstances.IsCreated)
-				grassBladeInstances.Dispose();
+			m_InstanceData = null;
 		}
 
 	}
-    public class GrassChunkSystemManager : MonoBehaviour
+    public class GrassChunkSystemManager
     {
         // Configurations 
         private const float CHUNK_SIZE = 16.0f;
@@ -90,16 +90,17 @@ namespace GhostOfTsushima.Runtime
 
         // References
             Transform cameraTransform = Camera.main.transform;
-            Mesh TemplateGrassMesh;
-            Material TemplateGrassMaterial;
+            Mesh templateGrassMesh;
+            Material templateGrassMaterial;
             BatchRendererGroup brg;
+
 		//
 
 		public GrassChunkSystemManager(BatchRendererGroup brg, Mesh mesh, Material mat, Transform camera)
 		{
 			this.brg = brg;
-			this.TemplateGrassMesh = mesh;
-			this.TemplateGrassMaterial = mat;
+			this.templateGrassMesh = mesh;
+			this.templateGrassMaterial = mat;
 			this.cameraTransform = camera;
 
 			activeChunks = new Dictionary<ChunkCoordinate, GrassChunk>();
@@ -134,14 +135,6 @@ namespace GhostOfTsushima.Runtime
 
         }
 
-        bool IsChunkVisible(GrassChunk chunk, Vector3 cameraPosition, int viewDistance) {
-            ChunkCoordinate cameraChunk = WorldToChunkCoordinate(cameraPosition);
-
-            float deltaX = math.abs(chunk.coordinate.x - cameraChunk.x);
-            float deltaZ = math.abs(chunk.coordinate.z - cameraChunk.z);
-
-            return (deltaX <= viewDistance) && (deltaZ <= viewDistance);
-        }
 
 		public void UpdateVisibleChunks()
 		{
@@ -187,6 +180,10 @@ namespace GhostOfTsushima.Runtime
 			}
 		}
 
+		public ref Dictionary<ChunkCoordinate, GrassChunk> GetActiveChunks(){
+			return ref activeChunks;
+		}
+
 		private void CreateChunk(ChunkCoordinate coord)
 		{
 			// Get from pool or create new
@@ -199,9 +196,7 @@ namespace GhostOfTsushima.Runtime
 
 
 			PopulateChunkBladesBuffer(chunk);
-			// TODO: Generate blade parameters for this chunk
-			// TODO: Upload to GPU
-			// TODO: Register with BRG
+			
 
 			chunk.isActive = true;
 			activeChunks[coord] = chunk;
