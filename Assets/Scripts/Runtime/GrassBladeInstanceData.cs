@@ -1,29 +1,30 @@
-﻿using Unity.Mathematics;
+﻿using System.Runtime.InteropServices;
+using Unity.Mathematics;
 
 namespace GhostOfTsushima.Runtime
 {
-    struct GrassBladeInstanceData
+	[StructLayout(LayoutKind.Sequential)]
+	struct GrassBladeInstanceData
     {
 
-        public float3 Position;
+        public float3 position;
+        public float facingAngle;
 
-        public float2 FacingDirection;
+        public float height;
+        public float width;
+        public float lean;
+        public float curvatureStrength;
 
-        public float Height;
+        public int shapeProfileID;
+        public float colorVariationSeed;
+        public float bladeHash;
+        public float stiffness;
 
-        public float Width;
 
-        public float TiltAngle;
-
-        public float CurvatureStrength;
-
-        public float BladeHash;
-
-        public int GrassTypeProfile;
-
-        public float WindStrength;
-
-        public float WindPhaseOffset;
+        public float windStrength;
+        public float windPhaseOffset;
+        float padding01;
+        float padding02;
 
     }
 

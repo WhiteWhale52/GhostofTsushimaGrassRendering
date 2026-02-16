@@ -6,37 +6,19 @@ using UnityEngine.Rendering;
 
 namespace GhostOfTsushima.Runtime
 {
-    public class GrassChunkSystemManager : MonoBehaviour
-    {
-        // Configurations 
-            float chunkSize = 16.0f;
-            // Number of Chunks visible in each direction
-            int viewDistance = 3;
-            int maxBladesPerChunk = 5000;
-        //
-
-        // Runtime Data
-            Dictionary<ChunkCoordinate, GrassChunk> activeChunks;
-            Queue<GrassChunk> chunkQueue;
-        //
-
-        // References
-        Transform cameraTransform = Camera.main.transform;
-        Mesh TemplateGrassMesh;
-        Material TemplateGrassMaterial;
-        //
-
-    }
 
     struct ChunkCoordinate {
-        uint x;
-        uint z;
+        public uint x, z;
 
-		public uint GetHashCode(){
+
+
+		public override int GetHashCode(){
 			uint hash = x;
 			hash ^= z + 0x9e3779b9 + (hash << 6) + (hash >> 2); 
-			return hash;
+			return (int)hash;
 		}
+
+        public ChunkCoordinate(int x, int z) : this() { }
 
         public bool equals(ChunkCoordinate chunkCoordinate){
             return x == chunkCoordinate.x && z == chunkCoordinate.z;
@@ -47,6 +29,11 @@ namespace GhostOfTsushima.Runtime
 		public ChunkCoordinate coordinate;
 		public float3 worldOrigin;
 		public Bounds bounds;
+
+        // CPU-side data
+        bool isActive;
+        float distanceToCamera;
+        int lastUpdateFrame;
 
         NativeArray<GrassBladeInstanceData> grassBladeInstances;
 
@@ -66,4 +53,62 @@ namespace GhostOfTsushima.Runtime
 
 
 	}
+    public class GrassChunkSystemManager : MonoBehaviour
+    {
+        // Configurations 
+         const float chunkSize = 16.0f;
+            // Number of Chunks visible in each direction
+            int viewDistance = 3;
+            int maxBladesPerChunk = 5000;
+        //
+
+        // Runtime Data
+            Dictionary<ChunkCoordinate, GrassChunk> activeChunks;
+            Queue<GrassChunk> chunkQueue;
+        //
+
+        // References
+        Transform cameraTransform = Camera.main.transform;
+        Mesh TemplateGrassMesh;
+        Material TemplateGrassMaterial;
+        //
+
+        ChunkCoordinate WorldToChunkCoordinate(Vector3 t_WorldPosition){
+            int chunkX = (int)math.floor(t_WorldPosition.x / chunkSize);
+
+            int chunkZ = (int)math.floor(t_WorldPosition.z / chunkSize);
+
+
+            return new ChunkCoordinate(chunkX, chunkZ);
+
+		}
+
+
+        Vector3 ChunkCoordinateToWorld(ChunkCoordinate chunkCoordinate) {
+            float worldX = chunkCoordinate.x * chunkSize;
+            float worldZ = chunkCoordinate.x * chunkSize;
+
+            return new Vector3(worldX,0, worldZ);
+        }
+
+        Bounds GetChunkBounds(ChunkCoordinate chunkCoordinate, float maxGrassHeight){
+            Vector3 origin = ChunkCoordinateToWorld(chunkCoordinate);
+            Vector3 centre = origin + new Vector3(chunkSize / 2, maxGrassHeight / 2, chunkSize / 2);
+
+            Vector3 size = new Vector3(chunkSize, maxGrassHeight, chunkSize);
+
+            return new Bounds(centre,size);
+
+        }
+
+        bool IsChunkVisible(GrassChunk chunk, Vector3 cameraPosition, int viewDistance) {
+            ChunkCoordinate cameraChunk = WorldToChunkCoordinate(cameraPosition);
+
+            float deltaX = math.abs(chunk.coordinate.x - cameraChunk.x);
+            float deltaZ = math.abs(chunk.coordinate.z - cameraChunk.z);
+
+            return (deltaX <= viewDistance) && (deltaZ <= viewDistance);
+        }
+
+    }
 }

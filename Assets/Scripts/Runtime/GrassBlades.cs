@@ -217,50 +217,24 @@ namespace GhostOfTsushima.Runtime
             return mesh;
         }
         
-        //TODO: Make a low LOD grass blade mesh
-        
-        
-        // private void AllocateInstanceDataBuffer()
-        // {
-        //     m_InstanceData = new GraphicsBuffer(GraphicsBuffer.Target.Raw,
-        //         BufferCountForInstances(kBytesPerInstance, numOfGrassBlades, kExtraBytes),
-        //         sizeof(int));
-        // }
+
         
         [BurstCompile]
         private void PopulateInstanceDataBuffer()
         {
-            /*int kernel = m_ComputeShader.FindKernel("GrassPosCompute");
-            int threadCountX = Mathf.CeilToInt(6);
-            int threadCountY = Mathf.CeilToInt(1);
-            int threadCountZ = Mathf.CeilToInt(1);
-            m_ComputeShader.SetVector(Min, BoundsMin);
-            m_ComputeShader.SetVector(Max, BoundsMax);
-          //  m_ComputeShader.SetInt(NumOfGrassBlades, smallNumberOfGrassBlades);
-            m_ComputeShader.SetInt(GlobalSeed, Random.Range(0,100000));
-            m_ComputeShader.SetBuffer(kernel, GrassPositions, m_ComputeBuffer);
-            m_ComputeShader.Dispatch(kernel, threadCountX, threadCountY, threadCountZ);
-            positions = new Vector3[numOfGrassBlades];
-            m_ComputeBuffer.GetData(positions); */
+
+			var bladeParameters = new NativeArray<GrassBladeInstanceData>(numOfGrassBlades, Allocator.Temp);
             
-            var zero = new float4x4[1] { float4x4.zero };
-            var matrices = new NativeArray<float4x4>(numOfGrassBlades, Allocator.TempJob);
-            var objectToWorld = new NativeArray<PackedMatrix>(numOfGrassBlades, Allocator.TempJob);
-            var worldToObject = new NativeArray<PackedMatrix>(numOfGrassBlades, Allocator.TempJob);
-            
-            PopulateMatricesJob job = new PopulateMatricesJob
+            PopulateBladeParametersJob job = new PopulateBladeParametersJob
             {
-                    defaultMatrices = matrices,
-                    ObjectToWorld = objectToWorld,
-                    WorldToObject = worldToObject,
-                    BoundsMin = BoundsMin,
-                    BoundsMax = BoundsMax,
+                    bladeInstances = bladeParameters,
+                    boundsMin = BoundsMin,
+                    boundsMax = BoundsMax,
                     rand = new Unity.Mathematics.Random((uint)Time.realtimeSinceStartup * 43)
             };
             JobHandle handle = job.Schedule(numOfGrassBlades, jobBatchSize);
             handle.Complete();
             
-          
 
             // In this simple example, the instance data is placed into the buffer like this:
             // Offset | Description
@@ -272,14 +246,14 @@ namespace GhostOfTsushima.Runtime
             // Calculates start addresses for the different instanced properties. unity_ObjectToWorld starts
             // at address 96 instead of 64, because the computeBufferStartIndex parameter of SetData
             // is expressed as source array elements, so it is easier to work in multiples of sizeof(PackedMatrix).
-            uint byteAddressObjectToWorld = kSizeOfPackedMatrix * 2;
-            uint byteAddressWorldToObject = byteAddressObjectToWorld + kSizeOfPackedMatrix * (uint) numOfGrassBlades;
+            int sizeOfBladeData = UnsafeUtility.SizeOf<GrassBladeInstanceData>();
+            uint byteAddressBladeData = 64;
        //    uint byteAddressColor = byteAddressWorldToObject + kSizeOfPackedMatrix * (uint) smallNumberOfGrassBlades;
 
             // Upload the instance data to the GraphicsBuffer so the shader can load them.
+            var zero = new float4x4[1] { float4x4.zero };
             m_InstanceData.SetData(zero, 0, 0, 1);
-            m_InstanceData.SetData(objectToWorld, 0, (int)(byteAddressObjectToWorld / kSizeOfPackedMatrix), objectToWorld.Length);
-            m_InstanceData.SetData(worldToObject, 0, (int)(byteAddressWorldToObject / kSizeOfPackedMatrix), worldToObject.Length);
+            m_InstanceData.SetData(bladeParameters, 0, 1, bladeParameters.Length);
 
             // Set up metadata values to point to the instance data. Set the most significant bit 0x80000000 in each
             // which instructs the shader that the data is an array with one value per instance, indexed by the instance index.
@@ -287,18 +261,86 @@ namespace GhostOfTsushima.Runtime
             // UNITY_ACCESS_DOTS_INSTANCED_PROP (i.e. without a default), the shader interprets the
             // 0x00000000 metadata value and loads from the start of the buffer. The start of the buffer is
             // a zero matrix so this sort of load is guaranteed to return zero, which is a reasonable default value.
-            var metadata = new NativeArray<MetadataValue>(2, Allocator.Temp);
-            metadata[0] = new MetadataValue { NameID = Shader.PropertyToID("unity_ObjectToWorld"), Value = 0x80000000 | byteAddressObjectToWorld, };
-            metadata[1] = new MetadataValue { NameID = Shader.PropertyToID("unity_WorldToObject"), Value = 0x80000000 | byteAddressWorldToObject, };
-         //   metadata[2] = new MetadataValue { NameID = Shader.PropertyToID("_BaseColor"), Value = 0x80000000 | byteAddressColor, };
+            var metadata = new NativeArray<MetadataValue>(10, Allocator.Temp);
+			int offset = 64; // Start after zero block
+
+			metadata[0] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_Position"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 12; // float3 = 12 bytes (but aligned to 16)
+			offset = (offset + 15) & ~15; // Round up to next 16-byte boundary
+
+			metadata[1] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_FacingAngle"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 4;
+
+			metadata[2] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_Height"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 4;
+
+			metadata[3] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_Width"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 4;
+
+			metadata[4] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_Curvature"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 4;
+
+			metadata[5] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_Lean"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 4;
+
+			metadata[6] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_ColorSeed"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 4;
+
+			metadata[7] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_BladeHash"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 4;
+
+			metadata[8] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_Stiffness"),
+				Value = 0x80000000 | (uint)offset
+			};
+			offset += 4;
+
+			metadata[9] = new MetadataValue
+			{
+				NameID = Shader.PropertyToID("_WindPhaseOffset"),
+				Value = 0x80000000 | (uint)offset
+			};
 
             // Finally, create a batch for the instances and make the batch use the GraphicsBuffer with the
             // instance data as well as the metadata values that specify where the properties are.
             m_BatchID = m_BRG.AddBatch(metadata, m_InstanceData.bufferHandle);
-            matrices.Dispose();
-            objectToWorld.Dispose();
-            worldToObject.Dispose();
-         //   m_GrassMaterial.SetBuffer(InstanceData, m_InstanceData);
+
+            bladeParameters.Dispose();
+            metadata.Dispose();
+
         }
 
 
@@ -392,21 +434,42 @@ namespace GhostOfTsushima.Runtime
         }
 
         [BurstCompile]
-        private struct PopulateMatricesJob : IJobParallelFor
+        private struct PopulateBladeParametersJob : IJobParallelFor
         {
-            public NativeArray<float4x4> defaultMatrices;
-            public NativeArray<PackedMatrix> ObjectToWorld;
-            public NativeArray<PackedMatrix> WorldToObject;
-            public float3 BoundsMin;
-            public float3 BoundsMax;
+            [WriteOnly] public NativeArray<GrassBladeInstanceData> bladeInstances;    
+
+            public float3 boundsMin;
+            public float3 boundsMax;
             public Unity.Mathematics.Random rand;
             
             public void Execute(int index)
             {
-                float3 transformation = new float3(rand.NextFloat3(BoundsMin, BoundsMax));
-                defaultMatrices[index] = float4x4.TRS(transformation, Quaternion.identity, Vector3.one);
-                ObjectToWorld[index] = new PackedMatrix(defaultMatrices[index]);
-                WorldToObject[index] = new PackedMatrix(math.inverse(defaultMatrices[index]));
+                float3 size = boundsMax - boundsMin;
+
+                float3 randomPos = boundsMin + new float3(
+                rand.NextFloat() * size.x,
+                0.0f,
+                rand.NextFloat() * size.z);
+
+                bladeInstances[index] = new GrassBladeInstanceData
+                {
+                    position = randomPos,
+                    facingAngle = rand.NextFloat() * 2.0f * math.PI,
+
+                    height = rand.NextFloat(0.5f, 1.5f),
+                    width = rand.NextFloat(0.02f, 0.04f),
+                    curvatureStrength = rand.NextFloat(-0.4f, 0.4f),
+                    lean = rand.NextFloat(-0.2f, 0.2f),
+
+                    shapeProfileID = rand.NextInt(0, 8),
+                    colorVariationSeed = rand.NextFloat(),
+                    bladeHash = rand.NextFloat(),
+                    stiffness = rand.NextFloat(0.3f, 0.8f),
+
+                    windPhaseOffset = rand.NextFloat(0, 2f * math.PI),
+                    windStrength = rand.NextFloat(0.8f, 1.2f),
+                };
+
             }
         }
 
