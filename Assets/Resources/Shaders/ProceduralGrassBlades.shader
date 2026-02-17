@@ -42,24 +42,24 @@ Shader "Custom/ProceduralGrassBlades_BRG"
             // This is the CORRECT way to declare per-instance data for BRG
             UNITY_DOTS_INSTANCING_START(MaterialPropertyMetadata)
                 // Transform (16 bytes)
-                UNITY_DOTS_INSTANCED_PROP(float3, _Position)
-                UNITY_DOTS_INSTANCED_PROP(float,  _FacingAngle)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float3, _Position)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float,  _FacingAngle)
                 
                 // Shape (16 bytes)
-                UNITY_DOTS_INSTANCED_PROP(float, _Height)
-                UNITY_DOTS_INSTANCED_PROP(float, _Width)
-                UNITY_DOTS_INSTANCED_PROP(float, _Curvature)
-                UNITY_DOTS_INSTANCED_PROP(float, _Lean)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _Height)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _Width)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _Curvature)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _Lean)
                 
                 // Variation (16 bytes)
-                UNITY_DOTS_INSTANCED_PROP(float, _ShapeProfileID)
-                UNITY_DOTS_INSTANCED_PROP(float, _ColorSeed)
-                UNITY_DOTS_INSTANCED_PROP(float, _BladeHash)
-                UNITY_DOTS_INSTANCED_PROP(float, _Stiffness)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _ShapeProfileID)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _ColorSeed)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _BladeHash)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _Stiffness)
                 
                 // Animation (16 bytes)
-                UNITY_DOTS_INSTANCED_PROP(float, _WindPhaseOffset)
-                UNITY_DOTS_INSTANCED_PROP(float, _WindStrengthMult)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _WindPhaseOffset)
+                UNITY_DOTS_INSTANCED_PROP_OVERRIDE_REQUIRED(float, _WindStrengthMult)
                 // No need to declare padding
             UNITY_DOTS_INSTANCING_END(MaterialPropertyMetadata)
             
@@ -130,18 +130,25 @@ Shader "Custom/ProceduralGrassBlades_BRG"
 
             // ========== HELPER FUNCTIONS (unchanged) ==========
             
-                void BuildBladeFrame(float3 tangent, float facingAngle, 
-                                    out float3 T, out float3 S, out float3 N)
+                void BuildBladeFrame(float3 tangent, float facingAngle,
+                     out float3 T, out float3 S, out float3 N)
                 {
-                    T = normalize(tangent);
+                    // Guard against degenerate tangent
+                    float tangentLen = length(tangent);
+                    T = (tangentLen < 0.0001) ? float3(0, 1, 0) : tangent / tangentLen;
+
                     float3 facingDir = float3(sin(facingAngle), 0, cos(facingAngle));
-                    S = normalize(cross(facingDir, T));
-                
-                    if (length(S) < 0.01)
-                    {
-                        S = normalize(cross(float3(0, 1, 0), T));
+                    S = cross(facingDir, T);
+
+                    if (length(S) < 0.0001) {
+                        S = cross(float3(1, 0, 0), T);
                     }
-                
+                    
+                    if (length(S) < 0.0001) {
+                        S = cross(float3(0, 0, 1), T);
+                    }
+
+                    S = normalize(S);
                     N = normalize(cross(T, S));
                 }
             
@@ -182,16 +189,16 @@ Shader "Custom/ProceduralGrassBlades_BRG"
                 #ifdef DOTS_INSTANCING_ON
                 
                 // ===== READ INSTANCE DATA USING BRG MACROS =====
-                float3 bladePosition = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float3, Metadata__Position);
-                float facingAngle = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__FacingAngle);
-                float height = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__Height);
-                float width = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__Width);
-                float curvature = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__Curvature);
-                float lean = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__Lean);
-                float colorSeed = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__ColorSeed);
-                float bladeHash = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__BladeHash);
-                float stiffness = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__Stiffness);
-                float windPhaseOffset = UNITY_ACCESS_DOTS_INSTANCED_PROP_FROM_MACRO(float, Metadata__WindPhaseOffset);
+                float3 bladePosition = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float3, _Position);
+                float facingAngle = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _FacingAngle);
+                float height = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _Height);
+                float width = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _Width);
+                float curvature = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _Curvature);
+                float lean = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _Lean);
+                float colorSeed = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _ColorSeed);
+                float bladeHash = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _BladeHash);
+                float stiffness = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _Stiffness);
+                float windPhaseOffset = UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _WindPhaseOffset);
                 
                 #else
                 
