@@ -13,18 +13,18 @@ namespace GhostOfTsushima.Runtime
 
 	public struct ChunkCoordinate : System.IEquatable<ChunkCoordinate>
 	{
-		public uint x, z;
+		public int x, z;
 
 		public ChunkCoordinate(int x, int z)
 		{
-			this.x = (uint)x;
-			this.z = (uint)z;
+			this.x = x;
+			this.z = z;
 		}
 
 
 		public override int GetHashCode(){
-			uint hash = x;
-			hash ^= z + 0x9e3779b9 + (hash << 6) + (hash >> 2); 
+			uint hash = (uint)x;
+			hash ^= (uint)z + 0x9e3779b9 + (hash << 6) + (hash >> 2); 
 			return (int)hash;
 		}
 
@@ -80,7 +80,7 @@ namespace GhostOfTsushima.Runtime
         // Configurations 
         private const float CHUNK_SIZE = 16.0f;
         private const int VIEW_DISTANCE = 3;
-        private const int MAX_BLADES_PER_CHUNK = 5000;
+        private const int MAX_BLADES_PER_CHUNK = 500;
         //
 
         // Runtime Data
@@ -90,8 +90,7 @@ namespace GhostOfTsushima.Runtime
 
         // References
             public Transform cameraTransform = Camera.main.transform;
-            Mesh templateGrassMesh;
-            Material templateGrassMaterial;
+            
             BatchRendererGroup brg;
 
 		//
@@ -108,11 +107,9 @@ namespace GhostOfTsushima.Runtime
 			}
 		}
 
-		public GrassChunkSystemManager(BatchRendererGroup brg, Mesh mesh, Material mat, Transform camera)
+		public GrassChunkSystemManager(BatchRendererGroup brg, Transform camera)
 		{
 			this.brg = brg;
-			this.templateGrassMesh = mesh;
-			this.templateGrassMaterial = mat;
 			this.cameraTransform = camera;
 
 			activeChunks = new Dictionary<ChunkCoordinate, GrassChunk>();
@@ -120,6 +117,7 @@ namespace GhostOfTsushima.Runtime
 		}
 
 		ChunkCoordinate WorldToChunkCoordinate(Vector3 t_WorldPosition){
+			
             int chunkX = (int)math.floor(t_WorldPosition.x / CHUNK_SIZE);
 
             int chunkZ = (int)math.floor(t_WorldPosition.z / CHUNK_SIZE);
@@ -150,8 +148,8 @@ namespace GhostOfTsushima.Runtime
 
 		public void UpdateVisibleChunks()
 		{
-			ChunkCoordinate cameraChunk = WorldToChunkCoordinate(cameraTransform.position);
-
+			ChunkCoordinate cameraChunkCoordinate = WorldToChunkCoordinate(cameraTransform.position);
+			Debug.Log($"Camera chunk: x: {cameraChunkCoordinate.x}  z: {cameraChunkCoordinate.z}");
 			HashSet<ChunkCoordinate> requiredChunks = new HashSet<ChunkCoordinate>();
 
 			for (int dz = -VIEW_DISTANCE; dz <= VIEW_DISTANCE; dz++)
@@ -159,8 +157,8 @@ namespace GhostOfTsushima.Runtime
 				for (int dx = -VIEW_DISTANCE; dx <= VIEW_DISTANCE; dx++)
 				{
 					ChunkCoordinate coord = new ChunkCoordinate(
-						(int)cameraChunk.x + dx,
-						(int)cameraChunk.z + dz
+						(int)cameraChunkCoordinate.x + dx,
+						(int)cameraChunkCoordinate.z + dz
 					);
 					requiredChunks.Add(coord);
 				}
@@ -204,10 +202,10 @@ namespace GhostOfTsushima.Runtime
 			chunk.worldOrigin = ChunkCoordinateToWorld(coord);
 			chunk.bounds = GetChunkBounds(coord, 2.0f);
 			chunk.seed = coord.GetHashCode();
-			Debug.Log($"Chunk created with {chunk.instanceCount} blades, batchID: {chunk.m_BatchID.value}");
 
 
 			PopulateChunkBladesBuffer(chunk);
+			Debug.Log($"Chunk created with {chunk.instanceCount} blades, batchID: {chunk.m_BatchID.value}");
 			
 
 			chunk.isActive = true;
@@ -221,6 +219,7 @@ namespace GhostOfTsushima.Runtime
 
 			// Remove from BRG
 			brg.RemoveBatch(chunk.m_BatchID);
+			Debug.Log($"Chunk deactivated with {chunk.instanceCount} blades, batchID: {chunk.m_BatchID.value} at  x:{chunk.coordinate.x}, z: {chunk.coordinate.z}");
 
 			chunk.Dispose();
 
@@ -397,9 +396,9 @@ namespace GhostOfTsushima.Runtime
 					facingAngle = random.NextFloat() * 2.0f * math.PI,
 
 					height = random.NextFloat(0.05f, 0.15f),
-					width = random.NextFloat(0.01f, 0.02f),
-					curvatureStrength = random.NextFloat(-0.4f, 0.4f),
-					lean = random.NextFloat(-0.2f, 0.2f),
+					width = random.NextFloat(0.005f, 0.01f),
+					curvatureStrength = random.NextFloat(-0.1f, 0.1f),
+					lean = random.NextFloat(-0.08f, 0.08f),
 
 					shapeProfileID = random.NextInt(0, 8),
 					colorVariationSeed = random.NextFloat(),
@@ -411,6 +410,7 @@ namespace GhostOfTsushima.Runtime
 					padding01 = 0,
 					padding02 = 0
 				};
+				Debug.Log($"Blade {index} has position {randomPos}");
 			}
 		}
 		public void Dispose()
