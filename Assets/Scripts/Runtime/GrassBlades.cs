@@ -136,8 +136,10 @@ namespace GhostOfTsushima.Runtime
             );
 			isIntialized = true;
 			chunkSystemManager.UpdateVisibleChunks();
+			Debug.Log($"Registered: MeshID={m_MeshID.value} MaterialID={m_MaterialID.value}");
 
-        }
+
+		}
 
 
 
@@ -515,7 +517,6 @@ namespace GhostOfTsushima.Runtime
             isIntialized = false;
             chunkSystemManager?.Dispose();
             Debug.Log(m_BRG);
-			Debug.Log("BatchRendererGroup in the grass blades class " + m_BRG);
 
 			m_BRG.UnregisterMesh(m_MeshID);
             m_BRG.UnregisterMaterial(m_MaterialID);

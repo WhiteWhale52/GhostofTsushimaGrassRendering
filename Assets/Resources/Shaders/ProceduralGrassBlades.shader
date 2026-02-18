@@ -29,7 +29,9 @@ Shader "Custom/ProceduralGrassBlades_BRG"
             
             // Unity 6 instancing
             #pragma multi_compile _ DOTS_INSTANCING_ON
-            
+            #pragma instancing_options renderinglayer
+
+
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             
@@ -117,41 +119,41 @@ Shader "Custom/ProceduralGrassBlades_BRG"
             void BuildBladeFrame(float3 tangent, float facingAngle, out float3 T, out float3 S, out float3 N)
             {
                 float tangentLen = length(tangent);
-                T = (tangentLen < 0.0001) ? float3(0, 1, 0) : tangent / tangentLen;
+                T = (tangentLen < 0.000001) ? float3(0, 1, 0) : tangent / tangentLen;
 
                 float3 facingDir = float3(sin(facingAngle), 0, cos(facingAngle));
-                S = cross(facingDir, T);
-
-                if (length(S) < 0.0001)
+                S = normalize(cross(facingDir, T));
+                
+                if (length(S) < 0.01)
                 {
-                    S = cross(float3(1, 0, 0), T);
+                    S = normalize(cross(float3(0, 1, 0), T));
                 }
                 
-                if (length(S) < 0.0001)
-                {
-                    S = cross(float3(0, 0, 1), T);
-                }
-
-                S = normalize(S);
                 N = normalize(cross(T, S));
             }
         
             float3 SampleWind(float3 worldPos, float time, float phase, float stiffness, float t)
                 {
-                    float2 windUV = worldPos.xz * 0.01;
-                    float4 windData = SAMPLE_TEXTURE2D_LOD(_WindTexture, sampler_WindTexture, windUV, 0);
-                
-                    float2 windDir = windData.rg * 2.0 - 1.0;
-                    float windStrength = windData.b;
-                
+                    #ifdef _WINDTEXTURE
+                        float2 windUV = worldPos.xz * 0.01;
+                        float4 windData = SAMPLE_TEXTURE2D_LOD(_WindTexture, sampler_WindTexture, windUV,0);
+        
+                        float2 windDir = windData.rg * 2.0 - 1.0;
+                        float windStrength = windData.b;
+                    #else
+                        // No wind texture - use simple sine wave
+                        float2 windDir = float2(1, 0);
+                        float windStrength = 0.5;
+                    #endif
+    
                     float timePhase = time * 2.0 + phase;
                     float sway = sin(timePhase) * 0.5 + 0.5;
-                
+    
                     float heightFactor = t * t;
                     float bendFactor = 1.0 - stiffness;
-                
+    
                     float totalWind = windStrength * sway * heightFactor * bendFactor * _WindStrength;
-                
+    
                     return float3(windDir.x, 0, windDir.y) * totalWind * 0.5;
                 }
         
@@ -183,8 +185,7 @@ Shader "Custom/ProceduralGrassBlades_BRG"
                 
                 #if defined(UNITY_DOTS_INSTANCING_ENABLED)
                 
-                // ===== UNITY 6 WAY TO READ INSTANCE DATA =====
-                // Simplified - just use property name directly
+                
                 bladePosition = UNITY_ACCESS_DOTS_INSTANCED_PROP(float3, _Position);
                 facingAngle = UNITY_ACCESS_DOTS_INSTANCED_PROP(float, _FacingAngle);
                 height = UNITY_ACCESS_DOTS_INSTANCED_PROP(float, _Height);
@@ -225,8 +226,8 @@ Shader "Custom/ProceduralGrassBlades_BRG"
                 float3 m1 = normalize(float3(0, 1, 0) + curveDir) * height * 0.3;
                 
                 // Evaluate curve
-                float3 centerPos = 0.01 * HermitePosition(p0, p1, m0, m1, t);
-                float3 tangent = 0.01 * HermiteTangent(p0, p1, m0, m1, t);
+                float3 centerPos =  HermitePosition(p0, p1, m0, m1, t);
+                float3 tangent =  HermiteTangent(p0, p1, m0, m1, t);
                 
                 // Build frame
                 float3 T, S, N;

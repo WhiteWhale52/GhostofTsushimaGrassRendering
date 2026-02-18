@@ -199,11 +199,12 @@ namespace GhostOfTsushima.Runtime
 		{
 			// Get from pool or create new
 			GrassChunk chunk = chunkQueue.Count > 0 ? chunkQueue.Dequeue() : new GrassChunk();
-
+			Debug.Log($"Creating chunk at ({coord.x}, {coord.z})");
 			chunk.coordinate = coord;
 			chunk.worldOrigin = ChunkCoordinateToWorld(coord);
 			chunk.bounds = GetChunkBounds(coord, 2.0f);
 			chunk.seed = coord.GetHashCode();
+			Debug.Log($"Chunk created with {chunk.instanceCount} blades, batchID: {chunk.m_BatchID.value}");
 
 
 			PopulateChunkBladesBuffer(chunk);
