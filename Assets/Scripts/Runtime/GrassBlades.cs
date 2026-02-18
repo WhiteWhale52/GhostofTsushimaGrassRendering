@@ -32,7 +32,7 @@ namespace GhostOfTsushima.Runtime
         private GrassChunkSystemManager chunkSystemManager;
         private int updateFrameCounter = 0;
 
-        [SerializeField] private Mesh m_GrassMesh;
+         private Mesh m_GrassMesh;
         [SerializeField] private Material m_GrassMaterial;
         [SerializeField] private int numOfGrassBlades = 5000;
         
@@ -42,7 +42,7 @@ namespace GhostOfTsushima.Runtime
 
         private BatchRendererGroup m_BRG;
         
-        //private GraphicsBuffer m_InstanceData;
+        //private GraphicsBuffer graphicsBufferInstanceData;
         private BatchID m_BatchID;
         private BatchMeshID m_MeshID;
         private BatchMaterialID m_MaterialID;
@@ -62,20 +62,17 @@ namespace GhostOfTsushima.Runtime
 
         public int jobBatchSize;
 
+
+        bool isIntialized = false;
         
         private void OnEnable()
         {
             // Creating the High LOD Grass Blade in CPU
             m_GrassMesh = CreateHighLODGrassBladesMesh();
-           // m_GrassMaterial.EnableKeyword("DOTS_INSTANCING_ON");
-            // Initialized the BRG
-            m_BRG = new BatchRendererGroup(this.OnPerformCulling, IntPtr.Zero);
-            // Initialized and Registered the mesh and material to BRG instance
-            if (m_GrassMesh) m_MeshID = m_BRG.RegisterMesh(m_GrassMesh);
-            if (m_GrassMaterial) m_MaterialID = m_BRG.RegisterMaterial(m_GrassMaterial);
-            
-            
-        
+           
+
+
+
 
             //TODO: Create a Compute Shader 
             // The compute shader will create numOfGrassBlades instances of GrassBladeData
@@ -118,20 +115,27 @@ namespace GhostOfTsushima.Runtime
             // metadata[1] = new MetadataValue { NameID = Shader.PropertyToID("unity_WorldToObject"), Value = 0x80000000 | byteAddressWorldToObject, };
             // metadata[2] = new MetadataValue { NameID = Shader.PropertyToID("_BaseColor"), Value = 0x80000000 | byteAddressColor, };
             // TODO: Finally add the batch to m_BRG
+           
         }
 
        
 
         private void Start()
         {
+			// m_GrassMaterial.EnableKeyword("DOTS_INSTANCING_ON");
+			// Initialized and Registered the mesh and material to BRG instance
+			m_BRG = new BatchRendererGroup(this.OnPerformCulling, IntPtr.Zero);
+			if (m_GrassMesh) m_MeshID = m_BRG.RegisterMesh(m_GrassMesh);
+			if (m_GrassMaterial) m_MaterialID = m_BRG.RegisterMaterial(m_GrassMaterial);
+			// Initialized the BRG
 			chunkSystemManager = new GrassChunkSystemManager(
 			m_BRG,
 			m_GrassMesh,
 			m_GrassMaterial,
 			Camera.main.transform		 
             );
-
-            chunkSystemManager.UpdateVisibleChunks();
+			isIntialized = true;
+			chunkSystemManager.UpdateVisibleChunks();
 
         }
 
@@ -192,7 +196,6 @@ namespace GhostOfTsushima.Runtime
 			mesh.SetUVs(0, uvs);
 			mesh.SetTriangles(triangles, 0);
 
-			// DON'T call RecalculateNormals - shader computes them
 			mesh.RecalculateBounds();
 
 			return mesh;
@@ -234,8 +237,8 @@ namespace GhostOfTsushima.Runtime
 
    //         // Upload the instance data to the GraphicsBuffer so the shader can load them.
    //         var zero = new float4x4[1] { float4x4.zero };
-   //         m_InstanceData.SetData(zero, 0, 0, 1);
-   //         m_InstanceData.SetData(bladeParameters, 0, 1, bladeParameters.Length);
+   //         graphicsBufferInstanceData.SetData(zero, 0, 0, 1);
+   //         graphicsBufferInstanceData.SetData(bladeParameters, 0, 1, bladeParameters.Length);
 
    //         // Set up metadata values to point to the instance data. Set the most significant bit 0x80000000 in each
    //         // which instructs the shader that the data is an array with one value per instance, indexed by the instance index.
@@ -318,7 +321,7 @@ namespace GhostOfTsushima.Runtime
 
    //         // Finally, create a batch for the instances and make the batch use the GraphicsBuffer with the
    //         // instance data as well as the metadata values that specify where the properties are.
-   //         m_BatchID = m_BRG.AddBatch(metadata, m_InstanceData.bufferHandle);
+   //         m_BatchID = m_BRG.AddBatch(metadata, graphicsBufferInstanceData.bufferHandle);
 
    //         bladeParameters.Dispose();
    //         metadata.Dispose();
@@ -330,13 +333,35 @@ namespace GhostOfTsushima.Runtime
         private unsafe JobHandle OnPerformCulling(BatchRendererGroup rendererGroup, 
         BatchCullingContext cullingContext, BatchCullingOutput cullingOutput, IntPtr userContext)
         {
-                // UnsafeUtility.Malloc() requires an alignment, so use the largest integer type's alignment
-             // which is a reasonable default.
-             int alignment = UnsafeUtility.AlignOf<long>();
+			if (!isIntialized || chunkSystemManager == null || m_BRG == null)
+			{
+				// Output empty draw commands (nothing to render)
+				var drawCommandsEmpty = (BatchCullingOutputDrawCommands*)
+					cullingOutput.drawCommands.GetUnsafePtr();
 
-             // Acquire a pointer to the BatchCullingOutputDrawCommands struct so you can easily
-             // modify it directly.
-             var drawCommands = (BatchCullingOutputDrawCommands*)cullingOutput.drawCommands.GetUnsafePtr();
+				drawCommandsEmpty->drawCommandCount = 0;
+				drawCommandsEmpty->drawRangeCount = 0;
+				drawCommandsEmpty->visibleInstanceCount = 0;
+				drawCommandsEmpty->drawCommands = null;
+				drawCommandsEmpty->drawRanges = null;
+				drawCommandsEmpty->visibleInstances = null;
+
+				return new JobHandle();
+			}
+			var activeChunks = chunkSystemManager.GetActiveChunks();
+			int chunkCount = activeChunks.Count;
+			if (chunkCount == 0)
+				return new JobHandle();
+			// UnsafeUtility.Malloc() requires an alignment, so use the largest integer type's alignment
+			// which is a reasonable default.
+			int alignment = UnsafeUtility.AlignOf<long>();
+
+			int totalInstances = 0;
+			foreach (var chunk in activeChunks.Values)
+				totalInstances += chunk.instanceCount;
+			// Acquire a pointer to the BatchCullingOutputDrawCommands struct so you can easily
+			// modify it directly.
+			var drawCommands = (BatchCullingOutputDrawCommands*)cullingOutput.drawCommands.GetUnsafePtr();
 
              // Allocate memory for the output arrays. In a more complicated implementation, you would calculate
              // the amount of memory to allocate dynamically based on what is visible.
@@ -346,51 +371,74 @@ namespace GhostOfTsushima.Runtime
              // - a single draw range (which covers our single draw command)
              // - kNumInstances visible instance indices.
              // You must always allocate the arrays using Allocator.TempJob.
-             drawCommands->drawCommands = (BatchDrawCommand*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawCommand>(), alignment, Allocator.TempJob);
-             drawCommands->drawRanges = (BatchDrawRange*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawRange>(), alignment, Allocator.TempJob);
-             drawCommands->visibleInstances = (int*)UnsafeUtility.Malloc(numOfGrassBlades * sizeof(int), alignment, Allocator.TempJob);
+             drawCommands->drawCommands = (BatchDrawCommand*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawCommand>() * chunkCount
+             , alignment, Allocator.TempJob);
+             drawCommands->drawRanges = (BatchDrawRange*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BatchDrawRange>(),
+             alignment, Allocator.TempJob);
+             drawCommands->visibleInstances = (int*)UnsafeUtility.Malloc(totalInstances * sizeof(int), 
+             alignment, Allocator.TempJob);
              drawCommands->drawCommandPickingEntityIds = null;
 
-             drawCommands->drawCommandCount = 1;
+             drawCommands->drawCommandCount = chunkCount;
              drawCommands->drawRangeCount = 1;
-             drawCommands->visibleInstanceCount = (int)numOfGrassBlades;
+             drawCommands->visibleInstanceCount = totalInstances;
 
              // This example doens't use depth sorting, so it leaves instanceSortingPositions as null.
              drawCommands->instanceSortingPositions = null;
              drawCommands->instanceSortingPositionFloatCount = 0;
 
-             // Configure the single draw command to draw kNumInstances instances
-             // starting from offset 0 in the array, using the batch, material and mesh
-             // IDs registered in the Start() method. It doesn't set any special flags.
-             drawCommands->drawCommands[0].visibleOffset = 0;
-             drawCommands->drawCommands[0].visibleCount = (uint) numOfGrassBlades;
-             foreach (GrassChunk chunk in chunkSystemManager.GetActiveChunks().Values){ 
-                 drawCommands->drawCommands[0].batchID = chunk.m_BatchID;
-                 drawCommands->drawCommands[0].materialID = m_MaterialID;
-                 drawCommands->drawCommands[0].meshID = m_MeshID;
-             }
-             drawCommands->drawCommands[0].submeshIndex = 0;
-             drawCommands->drawCommands[0].splitVisibilityMask = 0xff;
-             drawCommands->drawCommands[0].flags = 0;
-             drawCommands->drawCommands[0].sortingPosition = 0;
+			// Fill draw commands - ONE per chunk
+			int commandIndex = 0;
+			int visibleOffset = 0;
 
-             // Configure the single draw range to cover the single draw command which
-             // is at offset 0.
-             drawCommands->drawRanges[0].drawCommandsType = BatchDrawCommandType.Direct;
+			// Configure the single draw command to draw kNumInstances instances
+			// starting from offset 0 in the array, using the batch, material and mesh
+			// IDs registered in the Start() method. It doesn't set any special flags.
+			foreach (var chunk in activeChunks.Values)
+			{
+				// VALIDATE before submitting
+				if (!IsValidBatchID(chunk.m_BatchID))
+				{
+					Debug.LogWarning($"[Culling] Invalid BatchID for chunk " +
+									 $"({chunk.coordinate.x}, {chunk.coordinate.z})");
+					chunkCount--;
+					continue;
+				}
+
+				drawCommands->drawCommands[commandIndex].visibleOffset = (uint)visibleOffset;
+				drawCommands->drawCommands[commandIndex].visibleCount = (uint)chunk.instanceCount;
+				drawCommands->drawCommands[commandIndex].batchID = chunk.m_BatchID;  // Per-chunk!
+				drawCommands->drawCommands[commandIndex].materialID = m_MaterialID; // Global
+				drawCommands->drawCommands[commandIndex].meshID = m_MeshID;        // Global
+				drawCommands->drawCommands[commandIndex].submeshIndex = 0;
+				drawCommands->drawCommands[commandIndex].splitVisibilityMask = 0xff;
+				drawCommands->drawCommands[commandIndex].flags = 0;
+				drawCommands->drawCommands[commandIndex].sortingPosition = 0;
+
+				// Fill visible instance indices for this chunk
+				for (int i = 0; i < chunk.instanceCount; i++)
+				{
+					drawCommands->visibleInstances[visibleOffset + i] = i;
+				}
+
+				visibleOffset += chunk.instanceCount;
+				commandIndex++;
+			}
+			drawCommands->drawCommandCount = commandIndex;
+			drawCommands->visibleInstanceCount = visibleOffset;
+
+			// Configure the single draw range to cover the single draw command which
+			// is at offset 0.
+			 drawCommands->drawRanges[0].drawCommandsType = BatchDrawCommandType.Direct;
              drawCommands->drawRanges[0].drawCommandsBegin = 0;
-             drawCommands->drawRanges[0].drawCommandsCount = 1;
+             drawCommands->drawRanges[0].drawCommandsCount = (uint)commandIndex;
 
              // This example doesn't care about shadows or motion vectors, so it leaves everything
              // at the default zero values, except the renderingLayerMask which it sets to all ones
              // so Unity renders the instances regardless of mask settings.
              drawCommands->drawRanges[0].filterSettings = new BatchFilterSettings { renderingLayerMask = 0xffffffff, };
 
-             // Finally, write the actual visible instance indices to the array. In a more complicated
-             // implementation, this output would depend on what is visible, but this example
-             // assumes that everything is visible.
-             for (int i = 0; i < numOfGrassBlades; ++i)
-                 drawCommands->visibleInstances[i] = i;
-
+            
              // This simple example doesn't use jobs, so it returns an empty JobHandle.
              // Performance-sensitive applications are encouraged to use Burst jobs to implement
              // culling and draw command output. In this case, this function returns a
@@ -418,50 +466,61 @@ namespace GhostOfTsushima.Runtime
                 Allocator.TempJob);
         }
 
-        [BurstCompile]
-        private struct PopulateBladeParametersJob : IJobParallelFor
-        {
-            [WriteOnly] public NativeArray<GrassBladeInstanceData> bladeInstances;    
+        //[BurstCompile]
+        //private struct PopulateBladeParametersJob : IJobParallelFor
+        //{
+        //    [WriteOnly] public NativeArray<GrassBladeInstanceData> bladeInstances;    
 
-            public float3 boundsMin;
-            public float3 boundsMax;
-            public Unity.Mathematics.Random rand;
+        //    public float3 boundsMin;
+        //    public float3 boundsMax;
+        //    public Unity.Mathematics.Random rand;
             
-            public void Execute(int index)
-            {
-                float3 size = boundsMax - boundsMin;
+        //    public void Execute(int index)
+        //    {
+        //        float3 size = boundsMax - boundsMin;
 
-                float3 randomPos = boundsMin + new float3(
-                rand.NextFloat() * size.x,
-                0.0f,
-                rand.NextFloat() * size.z);
+        //        float3 randomPos = boundsMin + new float3(
+        //        rand.NextFloat() * size.x,
+        //        0.0f,
+        //        rand.NextFloat() * size.z);
 
-                bladeInstances[index] = new GrassBladeInstanceData
-                {
-                    position = randomPos,
-                    facingAngle = rand.NextFloat() * 2.0f * math.PI,
+        //        bladeInstances[index] = new GrassBladeInstanceData
+        //        {
+        //            position = randomPos,
+        //            facingAngle = rand.NextFloat() * 2.0f * math.PI,
 
-                    height = rand.NextFloat(0.5f, 1.5f),
-                    width = rand.NextFloat(0.02f, 0.04f),
-                    curvatureStrength = rand.NextFloat(-0.4f, 0.4f),
-                    lean = rand.NextFloat(-0.2f, 0.2f),
+        //            height = rand.NextFloat(0.5f, 1.5f),
+        //            width = rand.NextFloat(0.02f, 0.04f),
+        //            curvatureStrength = rand.NextFloat(-0.4f, 0.4f),
+        //            lean = rand.NextFloat(-0.2f, 0.2f),
 
-                    shapeProfileID = rand.NextInt(0, 8),
-                    colorVariationSeed = rand.NextFloat(),
-                    bladeHash = rand.NextFloat(),
-                    stiffness = rand.NextFloat(0.3f, 0.8f),
+        //            shapeProfileID = rand.NextInt(0, 8),
+        //            colorVariationSeed = rand.NextFloat(),
+        //            bladeHash = rand.NextFloat(),
+        //            stiffness = rand.NextFloat(0.3f, 0.8f),
 
-                    windPhaseOffset = rand.NextFloat(0, 2f * math.PI),
-                    windStrength = rand.NextFloat(0.8f, 1.2f),
-                };
+        //            windPhaseOffset = rand.NextFloat(0, 2f * math.PI),
+        //            windStrength = rand.NextFloat(0.8f, 1.2f),
+        //        };
 
-            }
-        }
+        //    }
+        //}
+
+		private bool IsValidBatchID(BatchID id)
+		{
+			return id.value != 0 && id.value != uint.MaxValue;
+		}
 		private void OnDisable()
 		{
+            isIntialized = false;
             chunkSystemManager?.Dispose();
-			m_BRG.Dispose();
-			//m_InstanceData.Release();
+            Debug.Log(m_BRG);
+			Debug.Log("BatchRendererGroup in the grass blades class " + m_BRG);
+
+			m_BRG.UnregisterMesh(m_MeshID);
+            m_BRG.UnregisterMaterial(m_MaterialID);
+			m_BRG?.Dispose();
+			//graphicsBufferInstanceData.Release();
 		}
 
 	}

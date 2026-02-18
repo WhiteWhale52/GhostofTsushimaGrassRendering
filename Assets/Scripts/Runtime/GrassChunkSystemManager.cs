@@ -62,7 +62,7 @@ namespace GhostOfTsushima.Runtime
 
         //NativeArray<GrassBladeInstanceData> grassBladeInstances;
 
-		public GraphicsBuffer m_InstanceData;
+		public GraphicsBuffer graphicsBufferInstanceData;
 		public int instanceCount;
 		public BatchID m_BatchID;
 
@@ -70,8 +70,8 @@ namespace GhostOfTsushima.Runtime
 		public int currentLODLevel;
 		public void Dispose()
 		{
-			m_InstanceData?.Dispose();
-			m_InstanceData = null;
+			graphicsBufferInstanceData?.Dispose();
+			//graphicsBufferInstanceData = null;
 		}
 
 	}
@@ -89,12 +89,24 @@ namespace GhostOfTsushima.Runtime
         //
 
         // References
-            Transform cameraTransform = Camera.main.transform;
+            public Transform cameraTransform = Camera.main.transform;
             Mesh templateGrassMesh;
             Material templateGrassMaterial;
             BatchRendererGroup brg;
 
 		//
+
+		public int ActiveChunkCount => activeChunks.Count;
+		public int TotalBladeCount
+		{
+			get
+			{
+				int total = 0;
+				foreach (var chunk in activeChunks.Values)
+					total += chunk.instanceCount;
+				return total;
+			}
+		}
 
 		public GrassChunkSystemManager(BatchRendererGroup brg, Mesh mesh, Material mat, Transform camera)
 		{
@@ -140,7 +152,6 @@ namespace GhostOfTsushima.Runtime
 		{
 			ChunkCoordinate cameraChunk = WorldToChunkCoordinate(cameraTransform.position);
 
-			// Determine required chunks
 			HashSet<ChunkCoordinate> requiredChunks = new HashSet<ChunkCoordinate>();
 
 			for (int dz = -VIEW_DISTANCE; dz <= VIEW_DISTANCE; dz++)
@@ -211,26 +222,19 @@ namespace GhostOfTsushima.Runtime
 			brg.RemoveBatch(chunk.m_BatchID);
 
 			chunk.Dispose();
+
 			chunk.isActive = false;
 
 			chunkQueue.Enqueue(chunk);
 			activeChunks.Remove(coord);
 		}
 
-		public void Dispose()
-		{
-			foreach (var chunk in activeChunks.Values)
-			{
-				chunk.Dispose();
-			}
-			activeChunks.Clear();
-		}
 
 		[BurstCompile]
 		private void PopulateChunkBladesBuffer(GrassChunk chunk)
 		{
 
-			var bladeParameters = new NativeArray<GrassBladeInstanceData>(MAX_BLADES_PER_CHUNK, Allocator.Temp);
+			var bladeParameters = new NativeArray<GrassBladeInstanceData>(MAX_BLADES_PER_CHUNK, Allocator.TempJob);
 
 			PopulateChunkBladesJob job = new PopulateChunkBladesJob
 			{
@@ -241,7 +245,8 @@ namespace GhostOfTsushima.Runtime
 			};
 			JobHandle handle = job.Schedule(MAX_BLADES_PER_CHUNK, 64);
 			handle.Complete();
-
+			
+			//bladeParameters = null;
 
 			// In this simple example, the instance data is placed into the buffer like this:
 			// Offset | Description
@@ -254,19 +259,19 @@ namespace GhostOfTsushima.Runtime
 			// at address 96 instead of 64, because the computeBufferStartIndex parameter of SetData
 			// is expressed as source array elements, so it is easier to work in multiples of sizeof(PackedMatrix).
 			int sizeOfBladeData = UnsafeUtility.SizeOf<GrassBladeInstanceData>();
-			int bufferSize = BufferCountForInstances(sizeOfBladeData, MAX_BLADES_PER_CHUNK, 64);
+			int intBufferSize = BufferCountForInstances(sizeOfBladeData, MAX_BLADES_PER_CHUNK, 64);
 			//    uint byteAddressColor = byteAddressWorldToObject + kSizeOfPackedMatrix * (uint) smallNumberOfGrassBlades;
 
-			chunk.m_InstanceData = new GraphicsBuffer(
+			chunk.graphicsBufferInstanceData = new GraphicsBuffer(
 				GraphicsBuffer.Target.Raw,
-				bufferSize,
+				intBufferSize,
 				sizeof(int)
 			);
 
 			// Upload the instance data to the GraphicsBuffer so the shader can load them.
 			var zero = new float4x4[1] { float4x4.zero };
-			chunk.m_InstanceData.SetData(zero, 0, 0, 1);
-			chunk.m_InstanceData.SetData(bladeParameters, 0, 1, bladeParameters.Length);
+			chunk.graphicsBufferInstanceData.SetData(zero, 0, 0, 1);
+			chunk.graphicsBufferInstanceData.SetData(bladeParameters, 0, 1 , bladeParameters.Length);
 
 			chunk.instanceCount = MAX_BLADES_PER_CHUNK;
 			// Set up metadata values to point to the instance data. Set the most significant bit 0x80000000 in each
@@ -349,11 +354,10 @@ namespace GhostOfTsushima.Runtime
 
 			// Finally, create a batch for the instances and make the batch use the GraphicsBuffer with the
 			// instance data as well as the metadata values that specify where the properties are.
-			chunk.m_BatchID = brg.AddBatch(metadata, chunk.m_InstanceData.bufferHandle);
-
+			Debug.Log("BatchRendererGroup in the grass chunk manager system class " + brg);
+			chunk.m_BatchID = brg.AddBatch(metadata, chunk.graphicsBufferInstanceData.bufferHandle);
 			bladeParameters.Dispose();
 			metadata.Dispose();
-
 		}
 
 		// Raw buffers are allocated in ints. This is a utility method that calculates
@@ -403,8 +407,19 @@ namespace GhostOfTsushima.Runtime
 
 					windPhaseOffset = random.NextFloat(0, 2f * math.PI),
 					windStrength = random.NextFloat(0.8f, 1.2f),
+					padding01 = 0,
+					padding02 = 0
 				};
 			}
 		}
+		public void Dispose()
+		{
+			foreach (var chunk in activeChunks.Values)
+			{
+				chunk.Dispose();
+			}
+			activeChunks.Clear();
+		}
+		
 	}
 }

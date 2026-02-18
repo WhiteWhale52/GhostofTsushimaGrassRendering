@@ -23,8 +23,8 @@ namespace GhostOfTsushima.Runtime
 
         public float windStrength;
         public float windPhaseOffset;
-        float padding01;
-        float padding02;
+        public float padding01;
+        public float padding02;
 
     }
 
