@@ -137,6 +137,20 @@ Shader "Custom/ProceduralGrassBlades_BRG"
             }
         
             float3 SampleWind(float3 worldPos, float time, float phase, float stiffness, float t)
+                {
+                    S = cross(float3(1, 0, 0), T);
+                }
+                
+                if (length(S) < 0.0001)
+                {
+                    S = cross(float3(0, 0, 1), T);
+                }
+
+                S = normalize(S);
+                N = normalize(cross(T, S));
+            }
+        
+            float3 SampleWind(float3 worldPos, float time, float phase, float stiffness, float t)
             {
                 // Simple procedural wind
                 float2 windDir = normalize(float2(1, 0.3));
@@ -150,8 +164,8 @@ Shader "Custom/ProceduralGrassBlades_BRG"
                 
                 float totalWind = windStrength * sway * heightFactor * bendFactor * _WindStrength;
                 
-                return float3(windDir.x, 0, windDir.y) * totalWind * 0.3;
-            }
+                    return float3(windDir.x, 0, windDir.y) * totalWind * 0.5;
+                }
         
             float Hash(float seed)
             {
