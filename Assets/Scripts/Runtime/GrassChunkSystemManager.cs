@@ -395,8 +395,8 @@ namespace GhostOfTsushima.Runtime
 					position = randomPos,
 					facingAngle = random.NextFloat() * 2.0f * math.PI,
 
-					height = random.NextFloat(0.5f, 1.5f),
-					width = random.NextFloat(0.02f, 0.04f),
+					height = random.NextFloat(0.05f, 0.15f),
+					width = random.NextFloat(0.01f, 0.02f),
 					curvatureStrength = random.NextFloat(-0.4f, 0.4f),
 					lean = random.NextFloat(-0.2f, 0.2f),
 

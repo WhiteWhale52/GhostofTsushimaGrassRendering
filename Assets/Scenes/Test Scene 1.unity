@@ -163,12 +163,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9aaf635f76444077b42f10ff943c3cb9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: com.MohamedProductions.GhostOfTsushima.Runtime::GhostOfTsushima.Runtime.GrassBlades
-  m_GrassMesh: {fileID: 0}
   m_GrassMaterial: {fileID: 2100000, guid: 98be9da7c37162a4d8d11d0081be6464, type: 2}
-  numOfGrassBlades: 5000
-  smallNumberOfGrassBlades: 30
+  numOfGrassBlades: 1
+  smallNumberOfGrassBlades: 1
   BoundsMin: {x: 0, y: 0, z: 0}
-  BoundsMax: {x: 5.72, y: 0, z: 5.72}
+  BoundsMax: {x: 0.1, y: 0, z: 0.1}
   grassBladesTexture: {fileID: 2800000, guid: 4c33f436a27d2584cbff09118745f3ef, type: 3}
   chunkUpdateFrames: 10
   jobBatchSize: 67
@@ -311,6 +310,7 @@ GameObject:
   - component: {fileID: 2104290097}
   - component: {fileID: 2104290096}
   - component: {fileID: 2104290099}
+  - component: {fileID: 2104290100}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -436,6 +436,46 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &2104290100
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2104290095}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 013d5fe6b78b44ecb293d8fce274b2db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: com.MohamedProductions.GhostOfTsushima.Runtime::GhostOfTsushima.Runtime.CameraController
+  boost: 3.5
+  positionLerpTime: 0.2
+  mouseSensitivityCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.5
+      inSlope: 0
+      outSlope: 5
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 2.5
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  rotationLerpTime: 0.01
+  invertY: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
