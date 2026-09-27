@@ -130,14 +130,14 @@ namespace GhostOfTsushima.Runtime
 			// Initialized the BRG
 			chunkSystemManager = new GrassChunkSystemManager(
 			m_BRG,
-			m_GrassMesh,
-			m_GrassMaterial,
 			Camera.main.transform		 
             );
 			isIntialized = true;
 			chunkSystemManager.UpdateVisibleChunks();
+			Debug.Log($"Registered: MeshID={m_MeshID.value} MaterialID={m_MaterialID.value}");
 
-        }
+
+		}
 
 
 
@@ -196,7 +196,10 @@ namespace GhostOfTsushima.Runtime
 			mesh.SetUVs(0, uvs);
 			mesh.SetTriangles(triangles, 0);
 
-			mesh.RecalculateBounds();
+			mesh.bounds = new Bounds(
+				Vector3.zero,
+				new Vector3(1f, 2f, 1f) // generous blade size in local space
+			);
 
 			return mesh;
 		}
@@ -515,7 +518,6 @@ namespace GhostOfTsushima.Runtime
             isIntialized = false;
             chunkSystemManager?.Dispose();
             Debug.Log(m_BRG);
-			Debug.Log("BatchRendererGroup in the grass blades class " + m_BRG);
 
 			m_BRG.UnregisterMesh(m_MeshID);
             m_BRG.UnregisterMaterial(m_MaterialID);

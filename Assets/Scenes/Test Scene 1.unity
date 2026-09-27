@@ -167,7 +167,7 @@ MonoBehaviour:
   numOfGrassBlades: 1
   smallNumberOfGrassBlades: 1
   BoundsMin: {x: 0, y: 0, z: 0}
-  BoundsMax: {x: 0.1, y: 0, z: 0.1}
+  BoundsMax: {x: 40.66, y: 58.32, z: 40.66}
   grassBladesTexture: {fileID: 2800000, guid: 4c33f436a27d2584cbff09118745f3ef, type: 3}
   chunkUpdateFrames: 10
   jobBatchSize: 67
