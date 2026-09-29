@@ -392,8 +392,8 @@ namespace GhostOfTsushima.Runtime
 
 				bladeInstances[index] = new GrassBladeInstanceData
 				{
-					position = randomPos,
-					facingAngle = random.NextFloat() * 2.0f * math.PI,
+					//position = randomPos,
+					//facingAngle = random.NextFloat() * 2.0f * math.PI,
 
 					height = random.NextFloat(0.05f, 0.15f),
 					width = random.NextFloat(0.005f, 0.01f),
