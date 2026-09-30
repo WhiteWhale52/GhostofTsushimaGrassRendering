@@ -1,0 +1,52 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel ApplyTerrainHeight
+
+struct GrassBladeInstanceData
+{
+    float4 positionAndAngle;
+    float height;
+    float width;
+    float lean;
+    float bendStreength;
+    float bendDirection;
+    float bendAmount;
+    int shapeProfileID;
+    float colorVariationSeed;
+    float bladeHash;
+    float stiffness;
+    float windStrength;
+    float windPhaseOffset;
+    uint voronoiCellID;
+    float padding;
+};
+
+
+RWStructuredBuffer<GrassBladeInstanceData> _BladeData;
+Texture2D<float> _HeightMap;
+SamplerState sampler_HeightMap;
+
+cbuffer TerrainParameters
+{
+    float _TerrainSize;
+    float _TerrainAmplitude;
+    float2 _TerrainOrigin;
+    float _BladeCount;
+};
+
+[numthreads(128,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x;
+    if (index >= _BladeCount)
+        return;
+    
+    float4 posAndAngle = _BladeData[index].positionAndAngle;
+    
+    float2 uv = (posAndAngle.xz - _TerrainOrigin) / _TerrainSize;
+    uv = clamp(uv, 0.0, 1.0);
+    
+    //Sample the height map to get the terrain height at this blade's position
+    float terrainHeight = _HeightMap.SampleLevel(sampler_HeightMap, uv, 0) * _TerrainAmplitude;
+    _BladeData[index].positionAndAngle.y = terrainHeight;
+
+}
