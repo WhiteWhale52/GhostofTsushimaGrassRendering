@@ -53,6 +53,6 @@ namespace GhostOfTsushima.Runtime
             c3y = m.c3.y;
             c3z = m.c3.z;
         }
-        
+        public static PackedMatrix Identity => new PackedMatrix(Matrix4x4.identity);
     }
 }

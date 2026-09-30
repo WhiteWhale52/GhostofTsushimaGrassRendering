@@ -9,6 +9,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+
 // Removed unused 'using' statements for clarity
 namespace GhostOfTsushima.Runtime
 {
