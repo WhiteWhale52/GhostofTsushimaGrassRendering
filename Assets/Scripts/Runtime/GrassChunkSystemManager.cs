@@ -407,8 +407,8 @@ namespace GhostOfTsushima.Runtime
 
 					windPhaseOffset = random.NextFloat(0, 2f * math.PI),
 					windStrength = random.NextFloat(0.8f, 1.2f),
-					padding01 = 0,
-					padding02 = 0
+					//padding01 = 0,
+					//padding02 = 0
 				};
 				Debug.Log($"Blade {index} has position {randomPos}");
 			}
