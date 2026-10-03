@@ -43,7 +43,7 @@ namespace GhostOfTsushima.Runtime
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    struct HermiteCurveParams
+    public struct HermiteCurveParams
     {
         public float3 rootPosition;
         public float rootTangentX;
