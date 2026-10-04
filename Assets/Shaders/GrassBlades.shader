@@ -1,7 +1,5 @@
 Shader "Custom/GrassBlades"
 {
-   
-
     SubShader
     {
         Tags 
@@ -23,7 +21,7 @@ Shader "Custom/GrassBlades"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
-
+            #include "PerlinNoise.hlsl"
             struct GrassBladeInstanceData
             {
                 float4 positionAndAngle;
@@ -42,6 +40,113 @@ Shader "Custom/GrassBlades"
                 uint   voronoiCellID;
                 float  padding;
             };
+
+            // ── WIND GLOBALS ─────────────────────────────────────────────────────────────
+            // Set by GrassWindSystem.UploadToShader() every frame.
+            // All shaders in the project share these — grass, cloth, particles, etc.
+
+            float4 _WindDirection;       // xyz = world-space XZ direction (y=0), w = unused
+            float  _WindStrength;        // current total strength (base + gust contribution)
+            float  _WindSpeed;           // wave propagation speed across the field
+            float  _WindTime;            // wind-local time (continuous, never resets)
+            float  _NoiseScrollSpeed;    // how fast Perlin UV scrolls in wind direction
+            float  _NoiseScale;          // spatial frequency of Perlin noise
+            int    _NoiseFBMOctaves;     // fBm octave count (1–6)
+            float  _GustStrength;        // maximum gust strength multiplier
+
+
+            struct Vorticle
+            {
+                float4 positionAndRadius;       // xyz = world position, w = radius
+                float4 directionAndStrength;    // xyz = normalised push direction, w = strength
+                float4 decayAndPad;             // x = decayT [1=alive, 0=gone], yzw = padding
+            };
+            StructuredBuffer<Vorticle> _Vorticles;
+            int _VorticleCount;
+
+            float3 ComputeWindDisplacement(float3 worldRoot, float t, GrassBladeInstanceData blade)
+            {
+               float3 windDir = normalize(_WindDirection.xyz);
+
+               float2 scrollUV = worldRoot.xz * _NoiseScale + _WindDirection.xz * _NoiseScrollSpeed * _WindTime;
+                
+               float noiseValue = FBM2D(scrollUV, _NoiseFBMOctaves, 2.0, 0.5);
+
+               noiseValue = noiseValue / 0.87;
+               
+               float gustA    = sin(_WindTime * _GustStrength    + blade.windPhaseOffset);
+               float gustB    = sin(_WindTime * _GustStrength * 0.7  + blade.windPhaseOffset * 1.3);
+               float gustPeak = max(0.0, gustA * gustB);   // [0, 1]
+                
+
+               float windField = noiseValue + gustPeak * 0.4;
+
+               // Per-blade windStrength [0.8, 1.2] set at population time adds variation:
+               // some blades react more to wind than others (different stiffness in nature)
+               float3 primaryDisp = windDir * windField * _WindStrength * blade.windStrength;
+             
+               float3 vorticleDisp = float3(0.0, 0.0, 0.0);
+
+               [loop]
+               for (int i = 0; i < _VorticleCount; i++)
+               {
+                    Vorticle v = _Vorticles[i];
+
+                    float radius   = v.positionAndRadius.w;
+                    float strength = v.directionAndStrength.w;
+                    float decayT   = v.decayAndPad.x;
+
+                    // Skip zeroed / fully-decayed slots
+                    if (strength < 0.001 || decayT < 0.001 || radius < 0.001)
+                        continue;
+
+                    float3 vorticlePos = v.positionAndRadius.xyz;
+
+                    // Only the XZ distance matters — vorticles affect blades regardless
+                    // of height difference (a sword swing at chest height still pushes
+                    // grass at ankle height)
+                    float2 delta2D = worldRoot.xz - vorticlePos.xz;
+                    float  dist    = length(delta2D);
+
+                    if (dist >= radius)
+                        continue;
+
+                    // Smooth radial falloff: 1 at center, 0 at edge.
+                    // smoothstep(0, 1, 1 - dist/radius) achieves this.
+                    float normalizedDist = dist / radius;
+                    float falloff        = smoothstep(1.0, 0.0, normalizedDist);
+
+                    // Determine push direction
+                    float3 pushDir;
+                    float3 vorticleDir = v.directionAndStrength.xyz;
+                    float  dirLen      = length(vorticleDir);
+
+                    if (dirLen > 0.001)
+                    {
+                        pushDir = vorticleDir / dirLen; 
+                    }
+                    else
+                    {
+                        // Omni vorticle — explosion, impact
+                        // Push outward from vorticle center in XZ plane
+                        if (dist > 0.001)
+                            pushDir = float3(delta2D.x / dist, 0.0, delta2D.y / dist);
+                        else
+                            pushDir = float3(0.0, 0.0, 0.0);   // blade is at exact center — no push
+                    }
+
+                    // Accumulate: strength × falloff × decay
+                    // decayT fades the vorticle out over its lifetime
+                    vorticleDisp += pushDir * strength * falloff * decayT;
+                }
+                float heightScale   = t * t;
+                float stiffnessDamp = 1.0 - blade.stiffness * 0.5;
+
+                float3 totalDisp = (primaryDisp + vorticleDisp) * heightScale * stiffnessDamp;
+
+                return totalDisp;
+            }
+
 
             StructuredBuffer<GrassBladeInstanceData> _BladeData;
 

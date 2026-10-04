@@ -31,6 +31,7 @@ namespace GhostOfTsushima.Runtime
         //private NativeArray<GrassBladeData> m_GrassBlades;
 
         private GrassChunkSystemManager chunkSystemManager;
+        public GrassChunkSystemManager ChunkSystemManager=> chunkSystemManager;
         private int updateFrameCounter = 0;
 
          private Mesh m_GrassMesh;
