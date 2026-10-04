@@ -24,13 +24,13 @@ namespace GhostOfTsushima.Runtime
 
         public float colorVariationSeed;
         public float bladeHash;
-        public float stiffness;
+      //  public float stiffness;
 
 
         public float windStrength;
         public float windPhaseOffset;
         public uint voronoiCellID;
-        public float padding;
+     //   public float padding;
     }
     // 16 + 4*6 + 4 + 4*3 + 4*2 + 4 + 4 = 16 + 24 + 4 + 12 + 8 + 4 + 4 = 72... 
     // Recalculate and adjust padding count to land on a multiple of 16.

@@ -1,4 +1,5 @@
-﻿using Unity.Mathematics;
+﻿using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -66,7 +67,7 @@ namespace GhostOfTsushima.Runtime
 
         public bool isGenerated;
 
-        public VoronoiCell[] voronoiCells;
+        public NativeArray<VoronoiCell> voronoiCells;
         public SoilData soilData;
 
         public void Dispose()

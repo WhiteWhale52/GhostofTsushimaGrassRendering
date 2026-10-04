@@ -29,6 +29,12 @@ namespace GhostOfTsushima.Runtime
 
             job.Schedule(instanceCount, 64).Complete();
 
+
+            VoronoiClusteringSystem.ApplyClustering(bladeData, new int2(chunk.coordinate.x, chunk.coordinate.z), 50f, job.chunkOrigin, job.seed, VoronoiClusteringSystem.DefaultCellCount, out  chunk.voronoiCells);
+
+            chunk.soilData = VoronoiGenerator.AverageCellsToSoil(chunk.voronoiCells);
+
+
             // Create a GraphicsBuffer for the instance data
             int instanceStride = UnsafeUtility.SizeOf<GrassBladeInstanceData>();
             int totalInts = (GrassConstants.BRGZeroBlockBytes + instanceStride * instanceCount) / sizeof(int);
@@ -47,7 +53,7 @@ namespace GhostOfTsushima.Runtime
 
             // Set up metadata values to point to the instance data
             uint byteOffset = (uint)GrassConstants.BRGZeroBlockBytes;
-            uint perInstance = 0x80000000;
+            uint perInstance = 0x80000000u;
 
             var metadata = new NativeArray<MetadataValue>(4, Allocator.Temp);
             metadata[0] = new MetadataValue
@@ -64,13 +70,26 @@ namespace GhostOfTsushima.Runtime
             byteOffset += 8; // float2 = 8 bytes
             metadata[2] = new MetadataValue
             {
+                NameID = Shader.PropertyToID("_LeanCurvature"),
+                Value = perInstance | byteOffset
+            };
+            byteOffset += 8; // float2 = 8 bytes
+
+            metadata[3] = new MetadataValue
+            {
                 NameID = Shader.PropertyToID("_WindParameters"),
                 Value = perInstance | byteOffset
             };
             byteOffset += 8;
-            metadata[3] = new MetadataValue
+            metadata[4] = new MetadataValue
             {
                 NameID = Shader.PropertyToID("_BladeHash"),
+                Value = perInstance | byteOffset
+            };
+            byteOffset += 8; // float = 4 bytes
+            metadata[5] = new MetadataValue
+            {
+                NameID = Shader.PropertyToID("_VoronoiCellID"),
                 Value = perInstance | byteOffset
             };
 
@@ -127,11 +146,11 @@ namespace GhostOfTsushima.Runtime
                     shapeProfileID = random.NextInt(0, 4),
                     colorVariationSeed = random.NextFloat(),
                     bladeHash = random.NextFloat(),
-                    stiffness = random.NextFloat(0.4f, 0.9f),
+                //    stiffness = random.NextFloat(0.4f, 0.9f),
                     windStrength = random.NextFloat(0.8f, 1.2f),
                     windPhaseOffset = random.NextFloat(0f, math.PI * 2f),
                     voronoiCellID = 0,
-                    padding = 0f
+                   // padding = 0f
                 };
                 Debug.Log($"Blade {index} has position {randomPos}");
             }

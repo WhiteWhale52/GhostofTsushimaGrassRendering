@@ -7,7 +7,7 @@ using UnityEngine.XR;
 namespace GhostOfTsushima.Runtime
 {
 
-    public class GrassChunkSystemManager
+    public  class GrassChunkSystemManager
     {
         // Runtime Data
         private readonly Dictionary<ChunkCoordinate, GrassChunk> activeChunks = new();
@@ -67,7 +67,7 @@ namespace GhostOfTsushima.Runtime
 		}
 
 
-        Vector3 ChunkCoordinateToWorld(ChunkCoordinate chunkCoordinate) {
+        static Vector3 ChunkCoordinateToWorld(ChunkCoordinate chunkCoordinate) {
             float worldX = chunkCoordinate.x * CHUNK_SIZE;
             float worldZ = chunkCoordinate.z * CHUNK_SIZE;
 
