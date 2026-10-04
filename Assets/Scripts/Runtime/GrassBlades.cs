@@ -13,7 +13,7 @@ using UnityEngine.Rendering;
 // Removed unused 'using' statements for clarity
 namespace GhostOfTsushima.Runtime
 {
-    public partial class GrassBlades : MonoBehaviour
+    public class GrassBlades : MonoBehaviour
     {
         // These need to match the shader property names EXACTLY
         private static readonly int TiltID = Shader.PropertyToID("_Tilt");

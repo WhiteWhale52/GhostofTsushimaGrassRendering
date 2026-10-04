@@ -74,6 +74,7 @@ namespace GhostOfTsushima.Runtime
         {
             graphicsBufferInstanceData?.Release();
             graphicsBufferInstanceData = null;
+            voronoiCells.Dispose();
         }
 
     }

@@ -32,7 +32,7 @@ namespace GhostOfTsushima.Runtime
         [BurstCompile]
         public struct AssignVoronoiCellsJob : IJobParallelFor
         {
-            [ReadOnly] public NativeArray<GrassBladeInstanceData> bladeData;
+             public NativeArray<GrassBladeInstanceData> bladeData;
             [ReadOnly] public NativeArray<VoronoiCell> cells;
             [ReadOnly] public float3 chunkWorldOrigin;
             [ReadOnly] public float edgeFalloffWidth;

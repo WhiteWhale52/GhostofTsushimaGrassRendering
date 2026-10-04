@@ -55,7 +55,7 @@ namespace GhostOfTsushima.Runtime
             uint byteOffset = (uint)GrassConstants.BRGZeroBlockBytes;
             uint perInstance = 0x80000000u;
 
-            var metadata = new NativeArray<MetadataValue>(4, Allocator.Temp);
+            var metadata = new NativeArray<MetadataValue>(6, Allocator.Temp);
             metadata[0] = new MetadataValue
             {
                 NameID = Shader.PropertyToID("_PositionAndAngle"),

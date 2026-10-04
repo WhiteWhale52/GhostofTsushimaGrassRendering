@@ -7,7 +7,7 @@ using UnityEngine.XR;
 namespace GhostOfTsushima.Runtime
 {
 
-    public  class GrassChunkSystemManager
+    public class GrassChunkSystemManager
     {
         // Runtime Data
         private readonly Dictionary<ChunkCoordinate, GrassChunk> activeChunks = new();
@@ -154,7 +154,7 @@ namespace GhostOfTsushima.Runtime
 
 			chunk.isGenerated = false;
 
-			chunkQueue.Enqueue(chunk);
+			//chunkQueue.Enqueue(chunk);
 			activeChunks.Remove(coord);
 		}
 

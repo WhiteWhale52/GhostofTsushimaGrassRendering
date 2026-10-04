@@ -132,6 +132,8 @@ GameObject:
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
   - component: {fileID: 330585548}
+  - component: {fileID: 330585550}
+  - component: {fileID: 330585549}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -206,13 +208,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 0, y: 1, z: 21.135}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -297,6 +299,48 @@ MonoBehaviour:
     m_RotationOrder: 4
   rotationLerpTime: 0.062
   invertY: 0
+--- !u!114 &330585549
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b9a1d68f5da7994dbab8ef502607d67, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: com.MohamedProductions.GhostOfTsushima.Runtime::GhostOfTsushima.Runtime.VoronoiDebugDrawer
+  previewCellCount: 10
+  previewChunkSize: 50
+  previewChunkCoord:
+    x: 0
+    y: 0
+  previewGlobalSeed: 12345
+  drawCellCentres: 1
+  drawCellLabels: 1
+  drawEdgeSampling: 0
+  edgeSampleGrid: 20
+--- !u!114 &330585550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9aaf635f76444077b42f10ff943c3cb9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: com.MohamedProductions.GhostOfTsushima.Runtime::GhostOfTsushima.Runtime.GrassBlades
+  m_GrassMaterial: {fileID: 2100000, guid: 36936b2d86644874b870a81dff148f1e, type: 2}
+  numOfGrassBlades: 5000
+  smallNumberOfGrassBlades: 30
+  BoundsMin: {x: 0, y: 0, z: 0}
+  BoundsMax: {x: 5, y: 0, z: 5}
+  grassBladesTexture: {fileID: 2800000, guid: 4c33f436a27d2584cbff09118745f3ef, type: 3}
+  chunkUpdateFrames: 10
+  jobBatchSize: 5
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -323,7 +367,7 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
   m_Enabled: 1
-  serializedVersion: 12
+  serializedVersion: 13
   m_Type: 1
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 2
@@ -375,7 +419,7 @@ Light:
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ForceVisible: 0
-  m_ShadowRadius: 0
+  m_ShapeRadius: 0
   m_ShadowAngle: 0
   m_LightUnit: 1
   m_LuxAtDistance: 1
