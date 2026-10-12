@@ -27,6 +27,7 @@ namespace GhostOfTsushima.Runtime
             // Batch size 64: each blade does O(cellCount) work — small enough
             // that 64 per batch is a reasonable scheduling unit
             job.Schedule(bladeInstanceDatas.Length, 64).Complete();
+
         }
 
         [BurstCompile]
