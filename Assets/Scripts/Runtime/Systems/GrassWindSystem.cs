@@ -38,7 +38,7 @@ namespace GhostOfTsushima.Runtime
         public Vector4 decayAndPad;            // x=decayT, yzw=unused
     }
 
-    struct VorticleData
+    public struct VorticleData
     {
         public Vector3 worldPosition;
         public Vector3 direction;
@@ -65,7 +65,6 @@ namespace GhostOfTsushima.Runtime
         private static readonly int ID_GustStrength = Shader.PropertyToID("_GustStrength");
         private static readonly int ID_Vorticles = Shader.PropertyToID("_Vorticles");
         private static readonly int ID_VorticleCount = Shader.PropertyToID("_VorticleCount");
-
 
 
         [Header("Base Wind Settings")]
@@ -151,6 +150,9 @@ namespace GhostOfTsushima.Runtime
         private float2 _normalizedBaseDir;
 
         public GrassWindState CurrentState { get; private set; }
+
+        public IReadOnlyList<VorticleData> DebugVorticles => _vorticles;
+
 
         private void OnEnable()
         {
